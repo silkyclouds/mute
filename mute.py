@@ -14,6 +14,7 @@ Key features
     - realtime  messages kept max 1 h
     - threshold messages kept max 48 h
     - all flushed in FIFO order at reconnection.
+* No InfluxDB, no Flask, no weather, no Telraam, no Discord.
 * Timestamps now include the local timezone offset (RFC‑3339, e.g. 2025‑07‑04T08:17:03+02:00).
 """
 
@@ -136,12 +137,9 @@ def ensure_complete_config(cfg_path: str, cfg_obj: dict) -> dict:
     for key, label in [("server", "MQTT server"),
                        ("port",   "MQTT port"),
                        ("user",   "MQTT user (will be stored base64)"),
-                       ("password", "MQTT password (will be stored base64)"),
-                       ("tls", "Enable TLS? (yes/no)")]:
+                       ("password", "MQTT password (will be stored base64)")]:
         if not mqtt.get(key):
             val = _prompt_non_empty(label, "1883" if key == "port" else "")
-            if key == "tls":
-                val = val.lower() in ("yes", "y", "true", "1")
             if key == "user":
                 val = "b64:" + base64.b64encode(val.encode()).decode()
             if key == "password":
@@ -150,7 +148,8 @@ def ensure_complete_config(cfg_path: str, cfg_obj: dict) -> dict:
             changed = True
 
     if "tls" not in mqtt:
-        mqtt["tls"] = True
+        val = _prompt_non_empty("Enable TLS? (yes/no)", "yes")
+        mqtt["tls"] = val.lower() in ("yes", "y", "true", "1")
         changed = True
 
     # --- Ensure MAP address elements --------------------------------
