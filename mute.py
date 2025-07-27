@@ -122,9 +122,11 @@ def load_config(path: str):
 
 try:
     cfg = load_config(CFG_PATH)
-except (FileNotFoundError, json.JSONDecodeError) as e:
-    print(f"[FATAL] Unable to load {CFG_PATH}: {e}")
-    sys.exit(2)
+except (FileNotFoundError, json.JSONDecodeError):
+    print(f"⚠️  Config file {CFG_PATH} not found or invalid. Launching setup assistant...")
+    cfg = {}
+
+cfg = ensure_complete_config(CFG_PATH, cfg)
 
 # ------------------------------------------------------------------
 # Interactive first‑run helper
