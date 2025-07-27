@@ -114,11 +114,94 @@ def _mqtt_bool(key: str, default: bool = False) -> bool:
 
 CFG_PATH = os.getenv("MUTE_CFG", "config.json")
 
+# ------------------------------------------------------------------
+# Interactive first‑run helper
+# ------------------------------------------------------------------
+def _prompt_non_empty(label: str, default: str = "") -> str:
+    """Prompt until the user enters a non‑blank string (Ctrl‑C exits)."""
+    while True:
+        val = input(f"{label} [{default}]: ").strip() or default
+        if val:
+            return val
+        print("⚠️  This field is required – please enter a value.")
+
+def ensure_complete_config(cfg_path: str, cfg_obj: dict) -> dict:
+    """
+    Ask missing mandatory values at first run and persist them back to the
+    same JSON file.  Also auto‑generates INFLUX_BUCKET_PREFIX when absent.
+    """
+    changed = False
+
+    # --- Ensure MQTT section exists ---------------------------------
+    mqtt = cfg_obj.setdefault("MQTT_CONFIG", {})
+    for key, label in [("server", "MQTT server"),
+                       ("port",   "MQTT port"),
+                       ("user",   "MQTT user (will be stored base64)"),
+                       ("password", "MQTT password (will be stored base64)"),
+                       ("tls", "Enable TLS? (yes/no)")]:
+        if not mqtt.get(key):
+            val = _prompt_non_empty(label, "1883" if key == "port" else "")
+            if key == "tls":
+                val = val.lower() in ("yes", "y", "true", "1")
+            if key == "user":
+                val = "b64:" + base64.b64encode(val.encode()).decode()
+            if key == "password":
+                val = "b64:" + base64.b64encode(val.encode()).decode()
+            mqtt[key] = val
+            changed = True
+
+    if "tls" not in mqtt:
+        mqtt["tls"] = True
+        changed = True
+
+    # --- Ensure MAP address elements --------------------------------
+    map_cfg = cfg_obj.setdefault("MAP_CONFIG", {})
+    if "address" not in map_cfg or not map_cfg["address"]:
+        print("\nFull device address (e.g., Avenue Montefiore 106, Esneux, Belgium)")
+        map_cfg["address"] = _prompt_non_empty("Address")
+        changed = True
+
+    # Country, city, street/num + index (01 by default)
+    country = map_cfg.get("country_code") or _prompt_non_empty("Country code (2 letters)", "BE")
+    city    = map_cfg.get("city") or _prompt_non_empty("City", "Esneux")
+    street  = map_cfg.get("street") or _prompt_non_empty("Street and number", "Avenue Montefiore 106")
+    index   = map_cfg.get("device_index") or _prompt_non_empty("Device index (01,02…)", "01")
+    if not map_cfg.get("country_code"):   map_cfg["country_code"] = country; changed = True
+    if not map_cfg.get("city"):           map_cfg["city"] = city;   changed = True
+    if not map_cfg.get("street"):         map_cfg["street"] = street;changed = True
+    if not map_cfg.get("device_index"):   map_cfg["device_index"] = index;changed = True
+
+    # --- Generate or retrieve bucket prefix -------------------------
+    def _slug(s: str) -> str:
+        """Utility to slugify address parts (uppercase, no spaces)."""
+        return s.upper().replace(" ", "")
+
+    if not cfg_obj.get("INFLUX_BUCKET_PREFIX"):
+        prefix = f"{_slug(country)}_{_slug(city)}_{_slug(street)}_{index}"
+        cfg_obj["INFLUX_BUCKET_PREFIX"] = prefix
+        changed = True
+        print(f"✅ Generated INFLUX_BUCKET_PREFIX: {prefix}")
+    else:
+        prefix = cfg_obj["INFLUX_BUCKET_PREFIX"]
+
+    # Ensure we also have a device_name – default to the same prefix
+    dev_cfg = cfg_obj.setdefault("DEVICE_AND_NOISE_MONITORING_CONFIG", {})
+    if not dev_cfg.get("device_name"):
+        dev_cfg["device_name"] = prefix
+        changed = True
+
+    # Save back if needed
+    if changed:
+        with open(cfg_path, "w") as f:
+            json.dump(cfg_obj, f, indent=2)
+        print(f"⚙️  Config file {cfg_path} updated.")
+
+    return cfg_obj
+
 
 def load_config(path: str):
     with open(path, "r") as f:
         return json.load(f)
-
 
 try:
     cfg = load_config(CFG_PATH)
