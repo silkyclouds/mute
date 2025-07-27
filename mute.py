@@ -14,7 +14,6 @@ Key features
     - realtime  messages kept max 1 h
     - threshold messages kept max 48 h
     - all flushed in FIFO order at reconnection.
-* No InfluxDB, no Flask, no weather, no Telraam, no Discord.
 * Timestamps now include the local timezone offset (RFC‑3339, e.g. 2025‑07‑04T08:17:03+02:00).
 """
 
@@ -157,14 +156,14 @@ def ensure_complete_config(cfg_path: str, cfg_obj: dict) -> dict:
     # --- Ensure MAP address elements --------------------------------
     map_cfg = cfg_obj.setdefault("MAP_CONFIG", {})
     if "address" not in map_cfg or not map_cfg["address"]:
-        print("\nFull device address (e.g., Avenue Montefiore 106, Esneux, Belgium)")
+        print("\nFull device address (e.g., 123 Main Street, Anytown, Country)")
         map_cfg["address"] = _prompt_non_empty("Address")
         changed = True
 
     # Country, city, street/num + index (01 by default)
-    country = map_cfg.get("country_code") or _prompt_non_empty("Country code (2 letters)", "BE")
-    city    = map_cfg.get("city") or _prompt_non_empty("City", "Esneux")
-    street  = map_cfg.get("street") or _prompt_non_empty("Street and number", "Avenue Montefiore 106")
+    country = map_cfg.get("country_code") or _prompt_non_empty("Country code (2 letters)", "XX")
+    city    = map_cfg.get("city") or _prompt_non_empty("City", "Anytown")
+    street  = map_cfg.get("street") or _prompt_non_empty("Street and number", "123 Main Street")
     index   = map_cfg.get("device_index") or _prompt_non_empty("Device index (01,02…)", "01")
     if not map_cfg.get("country_code"):   map_cfg["country_code"] = country; changed = True
     if not map_cfg.get("city"):           map_cfg["city"] = city;   changed = True
