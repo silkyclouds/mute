@@ -24,7 +24,6 @@
 ## 🧰 Installation
 
 ```bash
-```bash
 # 1. Clone the repository into a folder named 'temporary'
 git clone https://github.com/silkyclouds/mute.git temporary
 cd temporary
