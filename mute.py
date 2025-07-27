@@ -14,7 +14,6 @@ Key features
     - realtime  messages kept max 1 h
     - threshold messages kept max 48 h
     - all flushed in FIFO order at reconnection.
-* No InfluxDB, no Flask, no weather, no Telraam, no Discord.
 * Timestamps now include the local timezone offset (RFC‑3339, e.g. 2025‑07‑04T08:17:03+02:00).
 """
 
@@ -455,10 +454,12 @@ def mqtt_on_connect(client, userdata, flags, rc, props=None):
     if rc == 0:
         MQTT_CONNECTED = True
         logger.info("Connected to MQTT broker.")
-        client.publish(AVAIL_TOPIC, "online", qos=1, retain=True)
-        # flush any leftover retained “offline” LWT and make sure it hits the broker now
-        client.loop_write()        # immediately ship the PUBLISH
+        # Publish discovery topics first
         publish_ha_config(client)
+        # Then signal availability
+        client.publish(AVAIL_TOPIC, "online", qos=1, retain=True)
+        client.loop_write()
+        # Finally flush any queued state messages
         flush_queue(client)
     else:
         logger.error(f"MQTT connect failed (rc={rc}).")
@@ -483,6 +484,8 @@ def build_sensor_cfg(suffix: str, friendly: str):
         "state_topic": state_topic,
         "unique_id": unique_id,
         "availability_topic": AVAIL_TOPIC,
+        "payload_available": "online",
+        "payload_not_available": "offline",
         "device_class": "sound_pressure",
         "unit_of_measurement": "dB",
         "device": {
@@ -492,8 +495,13 @@ def build_sensor_cfg(suffix: str, friendly: str):
             "manufacturer": "MUTEq",
         },
     }
-    # threshold sensor carries attributes
-    if suffix == "threshold_noise_level":
+    # Expose JSON attributes and extract numeric state
+    cfg_obj["value_template"] = "{{ value_json.noise_level }}"
+    # For realtime sensor, expose all other JSON fields as attributes
+    if suffix == "realtime_noise_level":
+        cfg_obj["json_attributes_topic"] = state_topic
+    elif suffix == "threshold_noise_level":
+        # threshold already uses attributes topic, ensure attributes
         cfg_obj["json_attributes_topic"] = state_topic
     return cfg_obj
 
@@ -543,6 +551,7 @@ def send_or_queue(topic: str, payload: str):
     """Publish if possible, else queue locally."""
     msg_type = "threshold" if topic.endswith("/threshold_noise_level/state") else "realtime"
     if MQTT_CONNECTED:
+        # State publishes should not be retained
         res = MQTT_CLIENT.publish(topic, payload, qos=1, retain=False)
         res.wait_for_publish()
         if res.rc == mqtt.MQTT_ERR_SUCCESS:
