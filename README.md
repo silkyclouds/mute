@@ -23,22 +23,22 @@
 
 ## 🧰 Installation
 
-1. **Requirements**:
+```bash
+```bash
+# 1. Clone the repository into a folder named 'temporary'
+git clone https://github.com/silkyclouds/mute.git temporary
+cd temporary
 
-   - Python ≥ 3.7
-   - Install required packages:
+# 2. (Optional but recommended) Create and activate a virtual environment
+python3 -m venv venv
+source venv/bin/activate
 
-     ```bash
-     pip install paho-mqtt pyusb pytz pyserial
-     ```
+# 3. Install required Python dependencies
+pip install paho-mqtt pyusb pytz pyserial
 
-     *(serial support is optional if only using USB)*
-
-2. **Launch the client**:
-
-   ```bash
-   python mute_client.py
-   ```
+# 4. Run the client (will auto-generate config.json on first launch)
+python mute.py --debug
+```
 
    An interactive setup wizard will guide you through first-time configuration (MQTT, device address, etc.).
 
