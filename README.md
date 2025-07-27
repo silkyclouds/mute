@@ -36,7 +36,7 @@ source venv/bin/activate
 pip install paho-mqtt pyusb pytz pyserial
 
 # 4. Run the client (will auto-generate config.json on first launch)
-python mute.py --debug
+python mute.py
 ```
 
    An interactive setup wizard will guide you through first-time configuration (MQTT, device address, etc.).
