@@ -21,6 +21,20 @@
 
 ---
 
+## 📡 Example use cases:
+
+- Noise pollution monitoring
+- Live venue sound levels monitoring
+- Logging city noise peaks
+- Triggering automations based on sound levels
+
+---
+## Prerequisites:
+
+- One running MQTT Broker ! (that's it)
+
+---
+
 ## 🧰 Installation
 
 ```bash
@@ -85,15 +99,6 @@ Fully compatible with `systemd`, `supervisord`, etc.
 
 Developed by [Raphaël Vael](https://github.com/silkyclouds)  
 License: [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)
-
----
-
-## 📡 Example use cases:
-
-- Noise pollution monitoring
-- Live venue sound levels monitoring
-- Logging city noise peaks
-- Triggering automations based on sound levels
 
 ---
 
