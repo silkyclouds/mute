@@ -147,7 +147,7 @@ def ensure_complete_config(cfg_path: str, cfg_obj: dict) -> dict:
             mqtt[key] = val
             changed = True
 
-    if "tls" not in mqtt:
+    if "tls" not in mqtt or not isinstance(mqtt["tls"], bool):
         val = _prompt_non_empty("Enable TLS? (yes/no)", "yes")
         mqtt["tls"] = val.lower() in ("yes", "y", "true", "1")
         changed = True
