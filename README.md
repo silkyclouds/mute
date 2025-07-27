@@ -1,5 +1,6 @@
-<img width="256" height="256" alt="muteq-512" src="https://github.com/user-attachments/assets/20b9eacd-a076-455a-a038-78b7ddb6e0b0" />
-
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/20b9eacd-a076-455a-a038-78b7ddb6e0b0" alt="muteq-512" width="320" />
+</p>
 
 **Mute Client** is a lightweight Python agent that reads sound pressure levels from a USB or serial SPL meter and publishes them via MQTT for Home Assistant, Grafana, or any other integration you'd like. It's designed to be resilient, autonomous, and efficient on low-power devices.
 
