@@ -232,12 +232,9 @@ def ensure_complete_config(cfg_path: str, cfg_obj: dict) -> dict:
     for key, label in [("server", "MQTT server"),
                        ("port",   "MQTT port"),
                        ("user",   "MQTT user (will be stored base64)"),
-                       ("password", "MQTT password (will be stored base64)"),
-                       ("tls", "Enable TLS? (yes/no)")]:
+                       ("password", "MQTT password (will be stored base64)")]:
         if not mqtt.get(key):
             val = _prompt_non_empty(label, "1883" if key == "port" else "")
-            if key == "tls":
-                val = val.lower() in ("yes", "y", "true", "1")
             if key == "user":
                 val = "b64:" + base64.b64encode(val.encode()).decode()
             if key == "password":
@@ -245,8 +242,9 @@ def ensure_complete_config(cfg_path: str, cfg_obj: dict) -> dict:
             mqtt[key] = val
             changed = True
 
-    if "tls" not in mqtt:
-        mqtt["tls"] = True
+    if "tls" not in mqtt or not isinstance(mqtt["tls"], bool):
+        val = _prompt_non_empty("Enable TLS? (yes/no)", "yes")
+        mqtt["tls"] = val.lower() in ("yes", "y", "true", "1")
         changed = True
 
     # --- Ensure MAP address elements --------------------------------
