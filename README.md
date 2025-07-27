@@ -24,9 +24,9 @@
 ## 🧰 Installation
 
 ```bash
-# 1. Clone the repository into a folder named 'temporary'
-git clone https://github.com/silkyclouds/mute.git temporary
-cd temporary
+# 1. Clone the repository into a folder named 'mute'
+git clone https://github.com/silkyclouds/mute.git mute
+cd mute
 
 # 2. (Optional but recommended) Create and activate a virtual environment
 python3 -m venv venv
