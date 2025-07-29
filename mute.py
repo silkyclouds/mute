@@ -14,6 +14,7 @@ Key features
     - realtime  messages kept max 1 h
     - threshold messages kept max 48 h
     - all flushed in FIFO order at reconnection.
+* No InfluxDB, no Flask, no weather, no Telraam, no Discord.
 * Timestamps now include the local timezone offset (RFC‑3339, e.g. 2025‑07‑04T08:17:03+02:00).
 """
 
@@ -737,8 +738,9 @@ def watchdog_loop():
                     MQTT_CLIENT.loop_stop()
             except Exception:
                 pass
-            # Re‑exec the current script with the same arguments
-            os.execv(sys.executable, [sys.executable] + sys.argv)
+            # Re‑exec the current script with the absolute path and same arguments
+            script_path = os.path.abspath(sys.argv[0])
+            os.execv(sys.executable, [sys.executable, script_path] + sys.argv[1:])
 
 # ------------------------------------------------------------------
 # Signal handling
