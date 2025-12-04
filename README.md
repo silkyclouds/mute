@@ -81,7 +81,7 @@ docker run -d \
   --restart=unless-stopped \
   --device /dev/bus/usb:/dev/bus/usb \
   -v /path/to/config:/config \
-  meaning/mute:client-latest
+  meaning/mute-client:latest
 ```
 
 > ⚠️ **Important:** The `-v /path/to/config:/config` volume mount is **required**. This is where the client stores your device registration and onboarding state. Replace `/path/to/config` with a real path on your host (e.g., `/home/pi/mute-config`).
@@ -130,7 +130,7 @@ docker run -d \
   -e LOCAL_MQTT_USER=mqtt-user \
   -e LOCAL_MQTT_PASS=mqtt-pass \
   -e LOCAL_MQTT_TLS=false \
-  meaning/mute:client-latest
+  meaning/mute-client:latest
 ```
 
 > 💡 **Note:** MQTT is completely optional. Your Mute Box will work perfectly fine without it — data always streams to the cloud dashboard.
