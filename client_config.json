@@ -1,0 +1,27 @@
+{
+  "config_version": 2,
+  "device_name": "My MUTEq Sensor",
+  "assigned_device_id": null,
+  "location": {
+    "address": "",
+    "lat": null,
+    "lon": null,
+    "country": ""
+  },
+  "environment_profile": "traffic_roadside",
+  "custom_environment_label": "",
+  "backend_preference_index": 0,
+  "backend_failover": [
+    "https://dash.muteq.eu"
+  ],
+  "usb_override": {
+    "vendor_id": null,
+    "product_id": null
+  },
+  "mqtt_enabled": false,
+  "mqtt_server": "",
+  "mqtt_port": 1883,
+  "mqtt_user": "",
+  "mqtt_pass": "",
+  "mqtt_tls": false
+}
