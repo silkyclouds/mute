@@ -285,8 +285,6 @@ Building your own Mute Box is easy and affordable. All you need is:
 - A supported USB sound meter
 - Docker installed
 
-**[📖 Read the DIY Build Guide →](https://github.com/muteq/mute/wiki/DIY-Guide)**
-
 </div>
 
 ---
@@ -350,7 +348,6 @@ Open-source · Community-powered · Privacy-first
   <a href="https://dash.muteq.eu">Dashboard</a> •
   <a href="https://muteq.eu">Website</a> •
   <a href="https://discord.com/invite/m7RGZy6YmZ">Discord</a> •
-  <a href="https://github.com/muteq/mute/wiki">Wiki</a>
 </p>
 
 <sub>© 2024 Raphaël Vael · Licensed under CC BY-NC 4.0</sub>
