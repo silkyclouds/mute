@@ -304,7 +304,7 @@ Building your own Mute Box is easy and affordable. All you need is:
 
 We love contributions from the community! Here's how you can help:
 
-- 🐛 **Report bugs** — Found an issue? [Let us know!](https://github.com/muteq/mute/issues)
+- 🐛 **Report bugs** — Found an issue? Let us know!
 - 💡 **Suggest features** — Have an idea? We're all ears.
 - 🎤 **Add USB devices** — Help us support more sound meters.
 - 📖 **Improve docs** — Documentation PRs are always welcome.
