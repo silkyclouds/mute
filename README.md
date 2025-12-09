@@ -105,7 +105,7 @@ docker logs mute-client
 You'll see something like:
 
 ```
-🔗 Complete your setup: https://dash.muteq.eu/claim/muteq-sensor-1234
+🔗 [SUCCESS] Onboarding URL: https://api.muteq.eu/claim/my-muteq-sensor-XXXX
 ```
 
 ### Step 3: Complete Onboarding
