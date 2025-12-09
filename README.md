@@ -69,10 +69,16 @@ The recommended way to run mute is via Docker. **No API keys, no tokens, no manu
 
 ### Prerequisites
 
-1. ✅ A supported USB sound meter connected to your device -> **search for "volume meter HY1361" on aliexpress, this model is tested an will be detected automatically by the mute script**
-   <img width="581" height="607" alt="image" src="https://github.com/user-attachments/assets/3148ad40-651c-4b55-9bf0-4b42e53e2c46" />
+1. ✅ A supported USB sound meter connected to your device  
+   → **Search for "volume meter HY1361" on Aliexpress — this model is tested and will be detected automatically by the mute script**
 
-3. ✅ Docker installed
+   <p align="center">
+     <img src="https://github.com/user-attachments/assets/3148ad40-651c-4b55-9bf0-4b42e53e2c46" width="50%" />
+     <br/>
+     <em>this is what you are looking for on Aliexpress</em>
+   </p>
+
+3. ✅ Docker installed  
 4. ✅ A config directory on your host (e.g., `/home/pi/mute-config`)
 
 ### Step 1: Run the Container
