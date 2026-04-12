@@ -3,6 +3,8 @@ import os
 from copy import deepcopy
 from typing import Any, Dict, Tuple
 
+BASE_API_URL = "https://api.muteq.eu"
+
 DEFAULT_CONFIG: Dict[str, Any] = {
     "config_version": 2,
     "device_name": "MUTEq Sensor",
@@ -18,7 +20,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "custom_environment_label": "",
     "backend_preference_index": 0,
     "backend_failover": [
-        "https://dash.muteq.eu"
+        BASE_API_URL
     ],
     "usb_override": {
         "vendor_id": None,
@@ -32,6 +34,38 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "mqtt_tls": False,
     "log_level": "INFO"
 }
+
+
+def _load_template_config(logger) -> Dict[str, Any]:
+    template_path = "/app/client_config.json"
+    try:
+        with open(template_path, "r", encoding="utf-8") as fh:
+            logger.info(f"[CONFIG] Loaded template from {template_path}")
+            return json.load(fh)
+    except Exception as exc:
+        logger.warning(f"[CONFIG] Failed to load template from {template_path}; falling back to DEFAULT_CONFIG. Error: {exc}")
+        return deepcopy(DEFAULT_CONFIG)
+
+
+def _merge_into_user_config(user_cfg: Dict[str, Any], template_cfg: Dict[str, Any], logger, path_prefix="") -> Tuple[Dict[str, Any], bool]:
+    """
+    Merge template_cfg into user_cfg, preserving existing user values.
+    Returns (merged_cfg, added_flag).
+    """
+    added = False
+    for key, tmpl_val in template_cfg.items():
+        full_key = f"{path_prefix}.{key}" if path_prefix else key
+        if key not in user_cfg:
+            user_cfg[key] = deepcopy(tmpl_val)
+            logger.info(f"[CONFIG] Auto-added missing key: {full_key}")
+            added = True
+        else:
+            user_val = user_cfg[key]
+            if isinstance(user_val, dict) and isinstance(tmpl_val, dict):
+                merged, sub_added = _merge_into_user_config(user_val, tmpl_val, logger, full_key)
+                user_cfg[key] = merged
+                added = added or sub_added
+    return user_cfg, added
 
 
 def sanitize_device_name(name: str) -> str:
@@ -70,8 +104,21 @@ def load_config(path: str, logger) -> Tuple[Dict[str, Any], bool]:
         logger.error("Failed to read or parse config file; falling back to defaults and re-registering.")
         cfg = deepcopy(DEFAULT_CONFIG)
         needs_registration = True
+    template_cfg = _load_template_config(logger)
+    cfg, added = _merge_into_user_config(cfg, template_cfg, logger)
     cfg = merge_defaults(cfg)
-    if not cfg.get("assigned_device_id") or not cfg.get("device_token"):
+    if added:
+        logger.info(f"[CONFIG] Persisting merged config to {path}")
+        try:
+            persist_config(path, cfg, logger)
+        except Exception as exc:
+            logger.error(f"[CONFIG] Failed to persist merged config to {path}: {exc}")
+    # Only require registration if device_id is missing
+    # If device_id exists but token is missing, we keep the device_id (can recover token)
+    if not cfg.get("assigned_device_id"):
+        needs_registration = True
+    elif not cfg.get("device_token"):
+        # Device ID exists but token missing - keep device_id, will try to recover
         needs_registration = True
     cfg["device_name"] = sanitize_device_name(cfg.get("device_name"))
     return cfg, needs_registration
@@ -122,18 +169,6 @@ def validate_config(cfg: Dict[str, Any], logger) -> Dict[str, Any]:
 
 def build_backend_pool(cfg: Dict[str, Any]) -> list:
     """
-    Build an ordered list of backend base URLs from config and env.
+    Build a single-entry backend base URL list (fixed API endpoint).
     """
-    env_urls = os.environ.get("MUTE_BACKEND_URLS")
-    if env_urls:
-        pool = [u.strip() for u in env_urls.split(",") if u.strip()]
-    else:
-        pool = list(cfg.get("backend_failover") or [])
-    cleaned = []
-    for url in pool:
-        val = url.rstrip("/")
-        if val:
-            cleaned.append(val)
-    if not cleaned:
-        cleaned = deepcopy(DEFAULT_CONFIG["backend_failover"])
-    return cleaned
+    return [BASE_API_URL]

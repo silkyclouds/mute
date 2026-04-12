@@ -12,7 +12,7 @@
   "custom_environment_label": "",
   "backend_preference_index": 0,
   "backend_failover": [
-    "https://dash.muteq.eu"
+    "https://api.muteq.eu"
   ],
   "usb_override": {
     "vendor_id": null,

@@ -21,6 +21,7 @@ RUN mkdir -p /app/.internal && \
 RUN pip install --no-cache-dir \
         requests \
         pyusb \
+        pyserial \
         paho-mqtt
 
 ENV PYTHONUNBUFFERED=1 \

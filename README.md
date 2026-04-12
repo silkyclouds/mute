@@ -78,21 +78,60 @@ The recommended way to run mute is via Docker. **No API keys, no tokens, no manu
      <em>this is what you are looking for on Aliexpress</em>
    </p>
 
-3. ✅ Docker installed  
+3. ✅ Docker installed
 4. ✅ A config directory on your host (e.g., `/home/pi/mute-config`)
+5. ✅ A supported CPU architecture: `amd64`, `arm64`, or `arm/v7`
 
-### Step 1: Run the Container
+### Step 1: Run the Container (Universal Command)
+
+This is the recommended command because it works with both supported meter families:
+- classic HID meters (`0x16c0:0x05dc`)
+- CH340/CH341 serial clones (`0x1a86:0x7523`)
 
 ```bash
 docker run -d \
   --name mute-client \
-  --restart=unless-stopped \
-  --device /dev/bus/usb:/dev/bus/usb \
+  --restart unless-stopped \
+  --privileged \
+  -v /dev:/dev \
   -v /path/to/config:/config \
   meaning/mute-client:latest
 ```
 
 > ⚠️ **Important:** The `-v /path/to/config:/config` volume mount is **required**. This is where the client stores your device registration and onboarding state. Replace `/path/to/config` with a real path on your host (e.g., `/home/pi/mute-config`).
+
+Why this command is the safest default:
+- `-v /dev:/dev` exposes both `/dev/bus/usb` and `/dev/ttyUSB*`
+- `--privileged` avoids USB/serial permission edge cases across Linux distributions and Docker setups
+- it works whether your sound meter is HID or a CH340 serial clone
+
+### Step 1b: More restrictive alternatives
+
+If you prefer to expose only the minimum required devices, use the variant that matches your hardware.
+
+#### Classic HID meter (`0x16c0:0x05dc`)
+
+```bash
+docker run -d \
+  --name mute-client \
+  --restart unless-stopped \
+  --device /dev/bus/usb:/dev/bus/usb \
+  -v /path/to/config:/config \
+  meaning/mute-client:latest
+```
+
+#### CH340 / CH341 serial clone (`0x1a86:0x7523`)
+
+```bash
+docker run -d \
+  --name mute-client \
+  --restart unless-stopped \
+  --device /dev/bus/usb:/dev/bus/usb \
+  --device /dev/ttyUSB0:/dev/ttyUSB0 \
+  -e MUTE_SERIAL_PORT=/dev/ttyUSB0 \
+  -v /path/to/config:/config \
+  meaning/mute-client:latest
+```
 
 ### Step 2: Get the Onboarding URL
 
@@ -105,7 +144,7 @@ docker logs mute-client
 You'll see something like:
 
 ```
-🔗 [SUCCESS] Onboarding URL: https://api.muteq.eu/claim/my-muteq-sensor-XXXX
+🌐 Enrollment URL: https://dash.muteq.eu/devices/my-muteq-sensor-XXXX/claim
 ```
 
 ### Step 3: Complete Onboarding
@@ -129,8 +168,9 @@ If you want to integrate with Home Assistant, add the MQTT environment variables
 ```bash
 docker run -d \
   --name mute-client \
-  --restart=unless-stopped \
-  --device /dev/bus/usb:/dev/bus/usb \
+  --restart unless-stopped \
+  --privileged \
+  -v /dev:/dev \
   -v /path/to/config:/config \
   -e LOCAL_MQTT_ENABLED=true \
   -e LOCAL_MQTT_SERVER=192.168.1.100 \
@@ -155,6 +195,23 @@ docker run -d \
 | `LOCAL_MQTT_TLS` | `false` | Enable TLS for MQTT connection |
 
 > 🚫 **No other configuration is needed.** There are no API keys, no tokens, no manual device IDs. Everything is automatic.
+
+### CH340 offset note
+
+For the `0x1a86:0x7523` CH340/CH341 devices, mute now reads the value as an **absolute SPL value by default**.
+
+If you ever encounter a clone that still requires the historical `+30 dB` offset, you can force it:
+
+```bash
+docker run -d \
+  --name mute-client \
+  --restart unless-stopped \
+  --privileged \
+  -v /dev:/dev \
+  -v /path/to/config:/config \
+  -e MUTE_CH340_OFFSET_DB=30 \
+  meaning/mute-client:latest
+```
 
 ---
 
@@ -192,9 +249,9 @@ automation:
 | Vendor ID | Product ID | Description |
 |-----------|------------|-------------|
 | `0x16c0` | `0x05dc` | Van Ooijen Technische Informatica HID meters |
-| `0x1a86` | `0x7523` | Generic USB volume meter (common in DIY builds) |
+| `0x1a86` | `0x7523` | CH340 / CH341 serial clone commonly found in DIY builds |
 
-> **Have a different USB sound meter?** [Open an Issue](https://github.com/muteq/mute/issues) to request support! Please include the vendor/product IDs.
+> **Have a different USB sound meter?** [Open an Issue](https://github.com/silkyclouds/mute/issues) to request support. Please include the vendor/product IDs and `lsusb` output.
 
 ---
 
