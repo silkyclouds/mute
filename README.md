@@ -84,8 +84,9 @@ The recommended way to run mute is via Docker. **No API keys, no tokens, no manu
 
 ### Step 1: Run the Container (Universal Command)
 
-This is the recommended command because it works with both supported meter families:
+This is the recommended command because it works with all supported meter families:
 - classic HID meters (`0x16c0:0x05dc`)
+- REED R8080 HID meter (`0x04d9:0xe000`)
 - CH340/CH341 serial clones (`0x1a86:0x7523`)
 
 ```bash
@@ -109,7 +110,7 @@ Why this command is the safest default:
 
 If you prefer to expose only the minimum required devices, use the variant that matches your hardware.
 
-#### Classic HID meter (`0x16c0:0x05dc`)
+#### HID meter (`0x16c0:0x05dc` or `0x04d9:0xe000`)
 
 ```bash
 docker run -d \
@@ -249,6 +250,7 @@ automation:
 | Vendor ID | Product ID | Description |
 |-----------|------------|-------------|
 | `0x16c0` | `0x05dc` | Van Ooijen Technische Informatica HID meters |
+| `0x04d9` | `0xe000` | REED R8080 (Holtek HID meter) |
 | `0x1a86` | `0x7523` | CH340 / CH341 serial clone commonly found in DIY builds |
 
 > **Have a different USB sound meter?** [Open an Issue](https://github.com/silkyclouds/mute/issues) to request support. Please include the vendor/product IDs and `lsusb` output.

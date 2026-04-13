@@ -18,6 +18,8 @@ except ImportError:  # pragma: no cover - dependency is installed in the image
 
 DEFAULT_VENDOR_ID = 0x16C0
 DEFAULT_PRODUCT_ID = 0x05DC
+R8080_VENDOR_ID = 0x04D9
+R8080_PRODUCT_ID = 0xE000
 CH340_VENDOR_ID = 0x1A86
 CH340_PRODUCT_ID = 0x7523
 CH340_BAUDRATE = 115200
@@ -45,6 +47,10 @@ def convert_raw_to_spl(raw: bytes) -> float:
 
 def _is_ch340_meter(vendor_id: int, product_id: int) -> bool:
     return vendor_id == CH340_VENDOR_ID and product_id == CH340_PRODUCT_ID
+
+
+def _is_r8080_meter(vendor_id: int, product_id: int) -> bool:
+    return vendor_id == R8080_VENDOR_ID and product_id == R8080_PRODUCT_ID
 
 
 def convert_ch340_frame_to_spl(frame: bytes) -> float:
@@ -130,6 +136,98 @@ class SerialSPLDevice:
         )
 
 
+class R8080Device:
+    """
+    REED R8080 USB sound level meter.
+
+    Protocol derived from the vendor Windows tooling:
+    - command frames use STX/ETX framing
+    - the command channel is primed through a HID SET_REPORT header
+    - the live reading is returned through interrupt IN
+    - the SPL value is encoded as (payload[5] * 256 + payload[6]) / 10.0
+    """
+
+    EP_IN = 0x81
+    EP_OUT = 0x02
+
+    def __init__(self, logger):
+        self.dev = None
+        self.logger = logger
+
+    def connect(self):
+        if usb is None:
+            raise RuntimeError("pyusb is not installed")
+        self.dev = usb.core.find(idVendor=R8080_VENDOR_ID, idProduct=R8080_PRODUCT_ID)
+        if not self.dev:
+            raise RuntimeError("R8080 not found")
+        try:
+            if self.dev.is_kernel_driver_active(0):
+                self.dev.detach_kernel_driver(0)
+        except Exception:
+            pass
+        self.dev.set_configuration()
+
+    def _drain(self):
+        while True:
+            try:
+                self.dev.read(self.EP_IN, 32, timeout=100)
+            except Exception:
+                break
+
+    def _send_header(self, cmd_type: int, length: int):
+        self.dev.ctrl_transfer(
+            0x21,
+            0x09,
+            0x0200,
+            0,
+            bytes([0x43, cmd_type, length & 0xFF, (length >> 8) & 0xFF, 0, 0, 0, 0]),
+            timeout=1000,
+        )
+
+    def _reset(self):
+        self.dev.reset()
+        time.sleep(0.6)
+        self.connect()
+
+    def read_value(self) -> Optional[float]:
+        try:
+            try:
+                self._send_header(0x01, 7)
+            except Exception:
+                pass
+
+            self.dev.write(
+                self.EP_OUT,
+                bytes([0x07, 0x02, 0x41, 0x00, 0x00, 0x00, 0x00, 0x03]),
+                timeout=1000,
+            )
+            self._drain()
+            self._send_header(0x04, 32)
+
+            for _ in range(5):
+                try:
+                    data = bytes(self.dev.read(self.EP_IN, 32, timeout=1500))
+                    count = data[0]
+                    payload = data[1 : count + 1]
+                    if len(payload) > 6:
+                        db_value = (payload[5] * 256 + payload[6]) / 10.0
+                        self._reset()
+                        return round(db_value, 1)
+                    break
+                except Exception:
+                    break
+
+            self._reset()
+            return None
+        except Exception as exc:
+            self.logger.warning(f"R8080 read failed: {exc}")
+            try:
+                self._reset()
+            except Exception:
+                pass
+            return None
+
+
 def _discover_serial_port(logger) -> Optional[str]:
     preferred = os.environ.get(SERIAL_PORT_ENV, "").strip()
     if preferred:
@@ -166,6 +264,17 @@ def _open_ch340_device(vendor_id: int, product_id: int, logger):
         sys.exit(1)
 
 
+def _open_r8080_device(vendor_id: int, product_id: int, logger):
+    r8080 = R8080Device(logger)
+    try:
+        r8080.connect()
+        logger.info(f"REED R8080 connected (VID=0x{vendor_id:04X}, PID=0x{product_id:04X})")
+        return r8080
+    except Exception as exc:
+        logger.error(f"Unable to open R8080 meter: {exc}")
+        sys.exit(1)
+
+
 def find_usb_device(vendor_id: Optional[int], product_id: Optional[int], logger):
     """
     Locate the SPL USB device. Exits the process if not found.
@@ -175,6 +284,8 @@ def find_usb_device(vendor_id: Optional[int], product_id: Optional[int], logger)
         pid = product_id or DEFAULT_PRODUCT_ID
         if _is_ch340_meter(vid, pid):
             return _open_ch340_device(vid, pid, logger)
+        if _is_r8080_meter(vid, pid):
+            return _open_r8080_device(vid, pid, logger)
         if usb is None:
             logger.error("pyusb is not installed. Cannot read USB HID SPL meter.")
             sys.exit(1)
@@ -205,13 +316,25 @@ def find_usb_device(vendor_id: Optional[int], product_id: Optional[int], logger)
             pass
         return dev
 
+    r8080_dev = usb.core.find(idVendor=R8080_VENDOR_ID, idProduct=R8080_PRODUCT_ID)
+    if r8080_dev is not None:
+        return _open_r8080_device(R8080_VENDOR_ID, R8080_PRODUCT_ID, logger)
+
     serial_dev = usb.core.find(idVendor=CH340_VENDOR_ID, idProduct=CH340_PRODUCT_ID)
     if serial_dev is not None:
         return _open_ch340_device(CH340_VENDOR_ID, CH340_PRODUCT_ID, logger)
 
     logger.error(
-        "SPL meter not found. Tried HID meter VID=0x%04X PID=0x%04X and serial CH340 VID=0x%04X PID=0x%04X. Exiting."
-        % (DEFAULT_VENDOR_ID, DEFAULT_PRODUCT_ID, CH340_VENDOR_ID, CH340_PRODUCT_ID)
+        "SPL meter not found. Tried HY1361 VID=0x%04X PID=0x%04X, "
+        "R8080 VID=0x%04X PID=0x%04X and CH340 VID=0x%04X PID=0x%04X. Exiting."
+        % (
+            DEFAULT_VENDOR_ID,
+            DEFAULT_PRODUCT_ID,
+            R8080_VENDOR_ID,
+            R8080_PRODUCT_ID,
+            CH340_VENDOR_ID,
+            CH340_PRODUCT_ID,
+        )
     )
     sys.exit(1)
 
@@ -221,6 +344,8 @@ def read_spl_value(device, logger) -> Optional[float]:
     Read a single SPL value from the USB device.
     Returns None on transient failures.
     """
+    if isinstance(device, R8080Device):
+        return device.read_value()
     if isinstance(device, SerialSPLDevice):
         try:
             return device.read_value()
