@@ -1,0 +1,993 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1014">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Mute Lab</title>
+<style>
+:root{
+  --bg:#0b1014;--panel:#121a20;--panel2:#18222a;--line:#24313b;--text:#e6eef2;--muted:#8a9ba6;
+  --teal:#5b9a9a;--teal2:#7cc4c4;--red:#d95030;--amber:#e0a43a;--green:#5fb37a;--blue:#5a8fd8;
+  --r:14px;--gap:12px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+body{padding-bottom:calc(74px + env(safe-area-inset-bottom))}
+button,input,select{font:inherit;color:inherit}
+a{color:var(--teal2)}
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background:rgba(11,16,20,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+header h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.dot.on{background:var(--green);box-shadow:0 0 0 4px rgba(95,179,122,.18)}
+.dot.off{background:var(--red)}
+.badge{font-size:11px;padding:3px 8px;border-radius:999px;background:var(--panel2);color:var(--muted);border:1px solid var(--line);text-transform:uppercase;letter-spacing:.6px}
+main{max-width:980px;margin:0 auto;padding:14px}
+section.tab{display:none}
+section.tab.active{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:var(--gap)}
+.card h2{font-size:14px;margin:0 0 10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.7px}
+.card h3{font-size:16px;margin:0 0 6px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spacer{flex:1}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.grid{display:grid;gap:10px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:640px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{background:var(--panel2);border-radius:12px;padding:10px 12px;min-width:0}
+.stat .k{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .v{font-size:22px;font-weight:650;margin-top:2px;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:12px;color:var(--muted);font-weight:500;margin-left:2px}
+.gauge-wrap{position:relative;max-width:420px;margin:0 auto}
+.gauge-wrap canvas{width:100%;height:auto;display:block}
+.gauge-center{position:absolute;left:0;right:0;bottom:6%;text-align:center}
+.gauge-center .big{font-size:64px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+.gauge-center .unit{font-size:16px;color:var(--muted);margin-left:4px}
+.gauge-center .sub{color:var(--muted);font-size:13px;margin-top:4px}
+.banner{display:none;border-radius:var(--r);padding:12px 14px;margin-bottom:var(--gap);font-weight:600}
+.banner.show{display:flex;gap:10px;align-items:center}
+.banner.episode{background:rgba(217,80,48,.14);border:1px solid rgba(217,80,48,.5)}
+.banner.event{background:rgba(224,164,58,.12);border:1px solid rgba(224,164,58,.45)}
+.banner.health{background:rgba(90,143,216,.12);border:1px solid rgba(90,143,216,.45)}
+.pulse{width:10px;height:10px;border-radius:50%;background:var(--red);animation:pulse 1.2s infinite;flex:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(217,80,48,.6)}100%{box-shadow:0 0 0 12px rgba(217,80,48,0)}}
+.chart{width:100%;height:220px;display:block}
+.chart.tall{height:260px}
+.chart.mini{height:90px}
+.seg{display:inline-flex;background:var(--panel2);border-radius:10px;padding:3px;border:1px solid var(--line)}
+.seg button{background:none;border:0;padding:6px 11px;border-radius:8px;color:var(--muted);cursor:pointer;font-size:13px}
+.seg button.on{background:var(--teal);color:#081012;font-weight:650}
+.btn{background:var(--teal);color:#071012;border:0;border-radius:11px;padding:10px 16px;font-weight:650;cursor:pointer;text-decoration:none;display:inline-block}
+.btn.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+.btn.danger{background:var(--red);color:#fff}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.sm{padding:7px 11px;font-size:13px;border-radius:9px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:650}
+.pill.pass{background:rgba(95,179,122,.18);color:var(--green)}
+.pill.warn{background:rgba(224,164,58,.18);color:var(--amber)}
+.pill.fail{background:rgba(217,80,48,.18);color:var(--red)}
+.over{color:var(--red)}
+.under{color:var(--green)}
+.ev{display:flex;gap:12px;align-items:center;padding:11px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.ev:last-child{border-bottom:0}
+.ev .ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--panel2);font-size:18px;flex:none}
+.ev .main{flex:1;min-width:0}
+.ev .t{font-weight:600}
+.ev .d{color:var(--muted);font-size:13px}
+.ev .pk{font-weight:700;font-variant-numeric:tabular-nums}
+.ev-detail{padding:4px 0 12px}
+.prog{display:flex;gap:12px;align-items:flex-start}
+.prog .ic{font-size:26px;width:44px;height:44px;border-radius:12px;background:var(--panel2);display:grid;place-items:center;flex:none}
+.prog p{margin:4px 0;color:var(--muted);font-size:14px;line-height:1.4}
+.prog .opts{margin-top:8px}
+label.chk{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
+select,input[type=number],input[type=time],input[type=text]{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;min-width:0}
+input[type=number]{width:96px}
+.form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 14px;align-items:center}
+.form .full{grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input[type=time]{width:132px}
+.form .qh{display:flex;gap:6px;align-items:center;margin-left:auto}
+.form .lbl{font-size:14px}
+.form .lbl small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:20;align-items:flex-end;justify-content:center}
+.sheet.show{display:flex}
+.sheet h2{font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.7px;margin:16px 0 8px}
+.sheet .box{background:var(--panel);border:1px solid var(--line);border-radius:20px 20px 0 0;width:100%;max-width:640px;max-height:92vh;overflow:auto;
+  padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+@media (min-width:700px){.sheet{align-items:center}.sheet .box{border-radius:20px}}
+.step-now{font-size:26px;font-weight:700;margin:6px 0 2px}
+.bar{height:8px;background:var(--panel2);border-radius:99px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--teal);width:0;transition:width .3s linear}
+.lin{display:grid;grid-template-columns:110px 1fr 64px;gap:8px;align-items:center;font-size:13px;margin:6px 0}
+.lin .track{position:relative;height:16px;background:var(--panel2);border-radius:6px}
+.lin .track i{position:absolute;top:0;bottom:0;left:0;border-radius:6px;background:var(--teal)}
+.lin .track b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--text)}
+.lin.dim .track i{background:var(--line)}
+ul.recs{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:14px;line-height:1.45}
+pre{background:var(--panel2);padding:12px;border-radius:10px;overflow:auto;font-size:12px;line-height:1.45;border:1px solid var(--line)}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:space-around;background:rgba(11,16,20,.94);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+nav button{background:none;border:0;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;padding:6px 10px;border-radius:10px;cursor:pointer;flex:1;max-width:120px}
+nav button span{font-size:20px;line-height:1}
+nav button.on{color:var(--teal2)}
+.toast{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);
+  padding:10px 16px;border-radius:12px;z-index:30;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw}
+.toast.show{opacity:1}
+.empty{color:var(--muted);text-align:center;padding:24px 8px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
+.kv div:nth-child(odd){color:var(--muted)}
+.trend{font-size:15px;line-height:1.5}
+.trend b{font-size:20px}
+/* Kiosk mode for wall tablets / Home Assistant iframe */
+body.kiosk{padding-bottom:0}
+body.kiosk nav,body.kiosk header .badge,body.kiosk #live-extra{display:none}
+body.kiosk .gauge-center .big{font-size:84px}
+</style>
+</head>
+<body>
+<header>
+  <div class="dot" id="conn"></div>
+  <h1 id="title">Mute Lab</h1>
+  <span class="badge" id="mode">…</span>
+</header>
+
+<main>
+<!-- ============================== LIVE ============================== -->
+<section class="tab active" id="tab-live">
+  <div class="banner episode" id="b-episode"><div class="pulse"></div><div id="b-episode-txt"></div></div>
+  <div class="banner event" id="b-event">💥 <div id="b-event-txt"></div></div>
+  <div class="banner health" id="b-health">🔌 <div id="b-health-txt"></div></div>
+
+  <div class="card">
+    <div class="gauge-wrap">
+      <canvas id="gauge" width="420" height="250"></canvas>
+      <div class="gauge-center">
+        <div><span class="big" id="now">--.-</span><span class="unit">dB</span></div>
+        <div class="sub" id="now-sub">waiting for the meter…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g4" style="margin-bottom:12px">
+    <div class="stat"><div class="k">LAeq 1 min</div><div class="v" id="s-laeq1">–</div></div>
+    <div class="stat"><div class="k">LAeq 15 min</div><div class="v" id="s-laeq15">–</div></div>
+    <div class="stat"><div class="k">Background L90</div><div class="v" id="s-l90">–</div></div>
+    <div class="stat"><div class="k">Lmax 15 min</div><div class="v" id="s-lmax">–</div></div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="margin-bottom:8px">
+      <h2 style="margin:0">Live</h2><div class="spacer"></div>
+      <div class="seg" id="live-range">
+        <button data-s="120">2 min</button><button data-s="600" class="on">10 min</button><button data-s="3600">1 h</button>
+      </div>
+    </div>
+    <canvas class="chart" id="live-chart"></canvas>
+    <div class="row small muted" style="margin-top:6px;gap:14px">
+      <span>━ <span style="color:var(--teal2)">LAeq 1 s</span></span>
+      <span>┄ <span style="color:var(--red)">event trigger</span></span>
+      <span>┄ <span style="color:var(--amber)">episode threshold</span></span>
+    </div>
+  </div>
+
+  <div id="live-extra">
+    <div class="grid g4" style="margin-bottom:12px">
+      <div class="stat"><div class="k">LAeq 1 h</div><div class="v" id="s-laeq60">–</div></div>
+      <div class="stat"><div class="k">Busy level L10</div><div class="v" id="s-l10">–</div></div>
+      <div class="stat"><div class="k">Loud events today</div><div class="v" id="s-events">–</div></div>
+      <div class="stat"><div class="k">Episodes today</div><div class="v" id="s-episodes">–</div></div>
+    </div>
+    <div class="card small muted" id="health-line">…</div>
+  </div>
+</section>
+
+<!-- ============================== HISTORY ============================== -->
+<section class="tab" id="tab-history">
+  <div class="card">
+    <div class="row" style="margin-bottom:8px">
+      <h2 style="margin:0">History</h2><div class="spacer"></div>
+      <div class="seg" id="hist-range">
+        <button data-h="24" class="on">24 h</button><button data-h="168">7 d</button><button data-h="720">30 d</button><button data-h="8760">1 y</button>
+      </div>
+    </div>
+    <canvas class="chart tall" id="hist-chart"></canvas>
+    <div class="row small muted" style="margin-top:6px;gap:14px">
+      <span style="color:var(--teal2)">━ LAeq</span>
+      <span style="color:var(--blue)">━ background L90</span>
+      <span style="color:var(--red)">· Lmax</span>
+      <span>▒ quiet hours</span>
+    </div>
+  </div>
+
+  <div class="card" id="trend-card"><h2>Are things getting better?</h2><div class="trend" id="trend">…</div></div>
+
+  <div class="card">
+    <h2>Daily report (EU Lden)</h2>
+    <div class="tablewrap"><table id="days"><thead><tr>
+      <th>Day</th><th>Lden</th><th>Lday</th><th>Leve</th><th>Lnight</th><th>Lmax</th><th>Events</th><th>Episodes</th>
+    </tr></thead><tbody></tbody></table></div>
+    <p class="small muted" style="margin-bottom:0">Lden weighs evening +5 dB and night +10 dB (Directive 2002/49/EC). WHO guideline for road traffic:
+      Lden 53 dB, Lnight 45 dB. Consumer meters are not Class 1 instruments — use the lab to know how far you can trust yours.</p>
+  </div>
+</section>
+
+<!-- ============================== EVENTS ============================== -->
+<section class="tab" id="tab-events">
+  <div class="card">
+    <div class="row" style="margin-bottom:6px">
+      <h2 style="margin:0">Events</h2><div class="spacer"></div>
+      <div class="seg" id="ev-kind">
+        <button data-k="" class="on">All</button><button data-k="event">Loud</button><button data-k="episode">Episodes</button>
+      </div>
+    </div>
+    <div id="ev-list"><div class="empty">Loading…</div></div>
+  </div>
+</section>
+
+<!-- ============================== LAB ============================== -->
+<section class="tab" id="tab-lab">
+  <div class="card">
+    <h3>🧪 Meter lab</h3>
+    <p class="muted small" style="margin:4px 0 10px;line-height:1.45">Put this phone 5–10 cm from the meter microphone, volume up, silent mode off, screen on.
+      Tests play through this phone, the box records the meter and analyses the result. You can also download each test as a WAV
+      and play it on a better speaker.</p>
+    <div class="row">
+      <button class="btn ghost sm" id="tone-btn">🔈 Level-check tone</button>
+      <span class="small muted">Live: <b id="lab-live">–</b> dB · background <b id="lab-bg">–</b> dB</span>
+    </div>
+  </div>
+  <div id="programs"></div>
+  <div class="card">
+    <div class="row"><h2 style="margin:0">Past runs</h2><div class="spacer"></div></div>
+    <div id="runs"><div class="empty">No test yet.</div></div>
+  </div>
+</section>
+
+<!-- ============================== SETTINGS ============================== -->
+<section class="tab" id="tab-settings">
+  <div class="card">
+    <h2>Detection</h2>
+    <div class="form" id="form">
+      <div class="lbl">Loud event trigger<small>per-second max, dB</small></div><input type="number" step="0.5" data-k="event_trigger_db">
+      <div class="lbl">Event hysteresis<small>dB below trigger to end an event</small></div><input type="number" step="0.5" data-k="event_hysteresis_db">
+      <div class="lbl">Event quiet hold<small>seconds below before it ends</small></div><input type="number" step="1" data-k="event_hold_s">
+      <div class="lbl">Episode threshold — day<small>1-min L50, dB</small></div><input type="number" step="0.5" data-k="episode_db">
+      <div class="lbl">Episode threshold — quiet hours<small>1-min L50, dB</small></div><input type="number" step="0.5" data-k="episode_night_db">
+      <div class="lbl">Episode ends after<small>minutes below threshold − 3 dB</small></div><input type="number" step="1" data-k="episode_end_minutes">
+      <div class="lbl full"><span style="flex:1 1 140px">Quiet hours<small>night thresholds apply</small></span><span class="qh"><input type="time" id="qh-a"> – <input type="time" id="qh-b"></span></div>
+      <div class="lbl">Calibration offset<small>added to every reading, dB</small></div><input type="number" step="0.1" data-k="calibration_offset_db">
+    </div>
+  </div>
+  <div class="card">
+    <h2>Notifications (ntfy)</h2>
+    <div id="ntfy-status" class="small" style="margin-bottom:10px"></div>
+    <div class="row" id="notify-kinds" style="margin-bottom:10px"></div>
+    <div class="form">
+      <div class="lbl">Daily report at</div><input type="time" data-k="daily_summary_time">
+      <div class="lbl">Min. gap between loud-event pushes<small>seconds</small></div><input type="number" step="30" data-k="event_notify_cooldown_s">
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn ghost sm" id="ntfy-test">Send a test</button>
+      <button class="btn ghost sm" id="ntfy-summary">Send yesterday's report</button>
+    </div>
+  </div>
+  <div class="row" style="margin-bottom:12px"><div class="spacer"></div><button class="btn" id="save">Save settings</button></div>
+  <div class="card">
+    <h2>Home Assistant</h2>
+    <div id="ha-status" class="small muted" style="margin-bottom:8px"></div>
+    <pre id="ha-yaml">…</pre>
+    <button class="btn ghost sm" id="ha-copy">Copy</button>
+  </div>
+  <div class="card">
+    <h2>Data</h2>
+    <div class="row">
+      <a class="btn ghost sm" data-dl="export.csv?days=7">Minutes · 7 d (CSV)</a>
+      <a class="btn ghost sm" data-dl="export.csv?days=30">Minutes · 30 d</a>
+      <a class="btn ghost sm" data-dl="events.csv?days=90">Events · 90 d</a>
+    </div>
+    <div class="kv" style="margin-top:12px" id="about"></div>
+  </div>
+</section>
+</main>
+
+<nav id="nav">
+  <button data-tab="live" class="on"><span>📈</span>Live</button>
+  <button data-tab="history"><span>🗓️</span>History</button>
+  <button data-tab="events"><span>💥</span>Events</button>
+  <button data-tab="lab"><span>🧪</span>Lab</button>
+  <button data-tab="settings"><span>⚙️</span>Settings</button>
+</nav>
+
+<div class="sheet" id="sheet"><div class="box" id="sheet-box"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+// ------------------------------------------------------------------ basics
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const qs = new URLSearchParams(location.search);
+if (qs.get("token")) localStorage.setItem("muteToken", qs.get("token"));
+const TOKEN = localStorage.getItem("muteToken") || "";
+const KIOSK = qs.get("kiosk") === "1";
+if (KIOSK) document.body.classList.add("kiosk");
+const withToken = (p) => TOKEN ? p + (p.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(TOKEN) : p;
+
+async function api(path, opts = {}) {
+  const res = await fetch(withToken("api/" + path), {
+    method: opts.method || "GET",
+    headers: opts.body ? { "Content-Type": "application/json" } : {},
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  let data = null;
+  try { data = await res.json(); } catch (e) { /* non-JSON */ }
+  if (res.status === 401) { askToken(); throw new Error("token required"); }
+  if (!res.ok) throw new Error((data && data.error) || ("HTTP " + res.status));
+  return data;
+}
+function askToken() {
+  const t = prompt("This Mute Lab is protected. Enter the access token (MUTE_LAB_TOKEN):");
+  if (t) { localStorage.setItem("muteToken", t); location.reload(); }
+}
+function toast(msg, ms = 2600) {
+  const el = $("#toast"); el.textContent = msg; el.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove("show"), ms);
+}
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const f1 = (v) => v == null ? "–" : Number(v).toFixed(1);
+const dbHtml = (v) => v == null ? "–" : `${Number(v).toFixed(1)}<small>dB</small>`;
+const clock = (t) => new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const dayLabel = (t) => new Date(t * 1000).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
+function dur(s) {
+  s = Math.max(0, Math.round(s));
+  if (s < 90) return s + " s";
+  const m = Math.round(s / 60);
+  return m < 90 ? m + " min" : Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0");
+}
+function levelColor(db) {
+  if (db == null) return "#8a9ba6";
+  if (db < 45) return "#5fb37a";
+  if (db < 55) return "#7cc4c4";
+  if (db < 65) return "#e0c43a";
+  if (db < 75) return "#e0903a";
+  return "#d95030";
+}
+function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+// ------------------------------------------------------------------ state
+const S = {
+  info: null, settings: null, snap: null,
+  live: [],            // [t, laeq, lmax]
+  liveRange: 600, histHours: 24, evKind: "",
+  tab: "live", run: null, prog: {},
+};
+
+// ------------------------------------------------------------------ charts
+function setupCanvas(cv) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  }
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  return { ctx, w, h };
+}
+function niceStep(range, target) {
+  const raw = range / target, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / mag;
+  return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag;
+}
+function drawChart(cv, o) {
+  if (!cv.clientWidth) return;
+  const { ctx, w, h } = setupCanvas(cv);
+  const padL = 34, padR = 8, padT = 8, padB = 20;
+  const all = o.series.flatMap((s) => s.pts.map((p) => p[1])).filter((v) => v != null);
+  (o.hlines || []).forEach((l) => all.push(l.y));
+  let yMin = o.yMin ?? (all.length ? Math.min(...all) : 30), yMax = o.yMax ?? (all.length ? Math.max(...all) : 90);
+  if (yMax - yMin < 10) { yMax += 5; yMin -= 5; }
+  yMin = Math.floor((yMin - 2) / 5) * 5; yMax = Math.ceil((yMax + 2) / 5) * 5;
+  const xMin = o.xMin, xMax = o.xMax;
+  const X = (x) => padL + (x - xMin) / (xMax - xMin || 1) * (w - padL - padR);
+  const Y = (y) => padT + (1 - (y - yMin) / (yMax - yMin || 1)) * (h - padT - padB);
+  ctx.font = "11px -apple-system,Segoe UI,Roboto,sans-serif";
+  // bands (quiet hours)
+  (o.bands || []).forEach((b) => {
+    const a = Math.max(X(b[0]), padL), z = Math.min(X(b[1]), w - padR);
+    if (z > a) { ctx.fillStyle = "rgba(90,143,216,.07)"; ctx.fillRect(a, padT, z - a, h - padT - padB); }
+  });
+  // grid
+  ctx.strokeStyle = css("--line"); ctx.fillStyle = css("--muted"); ctx.lineWidth = 1;
+  const ys = niceStep(yMax - yMin, 4);
+  for (let y = Math.ceil(yMin / ys) * ys; y <= yMax; y += ys) {
+    ctx.beginPath(); ctx.moveTo(padL, Y(y)); ctx.lineTo(w - padR, Y(y)); ctx.stroke();
+    ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillText(Math.round(y), padL - 6, Y(y));
+  }
+  // x ticks
+  const span = xMax - xMin;
+  const steps = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400, 172800, 604800, 2592000];
+  const xs = steps.find((s) => span / s <= 6) || 2592000;
+  const tz = o.rel ? 0 : new Date().getTimezoneOffset() * 60;
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  for (let t = Math.ceil((xMin - tz) / xs) * xs + tz; t <= xMax; t += xs) {
+    let label;
+    if (o.rel) label = Math.round(t) + " s";
+    else if (xs >= 86400) label = new Date(t * 1000).toLocaleDateString([], { day: "numeric", month: "short" });
+    else if (xs < 60) label = new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    else label = clock(t);
+    ctx.fillText(label, X(t), h - padB + 5);
+  }
+  // threshold lines
+  (o.hlines || []).forEach((l) => {
+    if (l.y < yMin || l.y > yMax) return;
+    ctx.save(); ctx.setLineDash([5, 5]); ctx.strokeStyle = l.color; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(padL, Y(l.y)); ctx.lineTo(w - padR, Y(l.y)); ctx.stroke(); ctx.restore();
+  });
+  // series
+  o.series.forEach((s) => {
+    const pts = s.pts.filter((p) => p[1] != null && p[0] >= xMin - 1 && p[0] <= xMax + 1);
+    if (!pts.length) return;
+    ctx.strokeStyle = s.color; ctx.fillStyle = s.color; ctx.lineWidth = s.width || 1.6;
+    if (s.dots) {
+      pts.forEach((p) => { ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), s.r || 1.6, 0, 7); ctx.fill(); });
+      return;
+    }
+    const gapLimit = s.gap || Infinity;
+    ctx.beginPath();
+    pts.forEach((p, i) => {
+      if (i === 0 || p[0] - pts[i - 1][0] > gapLimit) ctx.moveTo(X(p[0]), Y(p[1])); else ctx.lineTo(X(p[0]), Y(p[1]));
+    });
+    ctx.stroke();
+    if (s.fill) {
+      ctx.lineTo(X(pts[pts.length - 1][0]), Y(yMin)); ctx.lineTo(X(pts[0][0]), Y(yMin)); ctx.closePath();
+      const g = ctx.createLinearGradient(0, padT, 0, h - padB);
+      g.addColorStop(0, s.fill); g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g; ctx.fill();
+    }
+  });
+}
+
+function drawGauge(db) {
+  const cv = $("#gauge");
+  if (!cv.clientWidth) return;  // tab hidden
+  const { ctx, w, h } = setupCanvas(cv);
+  const cx = w / 2, cy = h * 0.92, r = Math.min(w / 2 - 18, h * 0.82);
+  const lo = 30, hi = 110, a0 = Math.PI, a1 = 2 * Math.PI;
+  const ang = (v) => a0 + (Math.min(hi, Math.max(lo, v)) - lo) / (hi - lo) * (a1 - a0);
+  ctx.lineCap = "round"; ctx.lineWidth = 16;
+  ctx.strokeStyle = css("--panel2"); ctx.beginPath(); ctx.arc(cx, cy, r, a0, a1); ctx.stroke();
+  if (db != null) {
+    const g = ctx.createLinearGradient(cx - r, 0, cx + r, 0);
+    g.addColorStop(0, "#5fb37a"); g.addColorStop(0.3, "#7cc4c4"); g.addColorStop(0.5, "#e0c43a"); g.addColorStop(0.7, "#e0903a"); g.addColorStop(1, "#d95030");
+    ctx.strokeStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, a0, ang(db)); ctx.stroke();
+  }
+  const st = S.settings;
+  const marks = [];
+  if (st) {
+    marks.push([st.event_trigger_db, css("--red")]);
+    const ep = S.snap && S.snap.episode ? S.snap.episode.threshold : st.episode_db;
+    marks.push([ep, css("--amber")]);
+  }
+  marks.forEach(([v, c]) => {
+    const a = ang(v); ctx.strokeStyle = c; ctx.lineWidth = 3; ctx.lineCap = "butt";
+    ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * (r - 14), cy + Math.sin(a) * (r - 14));
+    ctx.lineTo(cx + Math.cos(a) * (r + 14), cy + Math.sin(a) * (r + 14)); ctx.stroke();
+  });
+  ctx.fillStyle = css("--muted"); ctx.font = "11px -apple-system,Segoe UI,Roboto,sans-serif"; ctx.textAlign = "center";
+  [30, 50, 70, 90, 110].forEach((v) => {
+    const a = ang(v); ctx.fillText(v, cx + Math.cos(a) * (r - 30), cy + Math.sin(a) * (r - 30) + 4);
+  });
+}
+
+// ------------------------------------------------------------------ live
+function renderLive() {
+  const s = S.snap; if (!s) return;
+  const st = s.stats || {};
+  const db = s.db;
+  const fresh = s.db_t && (s.t - s.db_t) < 15;
+  $("#now").textContent = fresh && db != null ? db.toFixed(1) : "--.-";
+  $("#now").style.color = fresh ? levelColor(db) : css("--muted");
+  $("#now-sub").textContent = fresh ? `LAeq 1 min ${f1(st.laeq_1m)} dB` : "meter offline";
+  drawGauge(fresh ? db : null);
+  $("#s-laeq1").innerHTML = dbHtml(st.laeq_1m);
+  $("#s-laeq15").innerHTML = dbHtml(st.laeq_15m);
+  $("#s-laeq60").innerHTML = dbHtml(st.laeq_1h);
+  $("#s-l90").innerHTML = dbHtml(st.l90_15m);
+  $("#s-l10").innerHTML = dbHtml(st.l10_15m);
+  $("#s-lmax").innerHTML = dbHtml(st.lmax_15m);
+  $("#s-events").textContent = s.today.events;
+  $("#s-episodes").textContent = s.today.episodes;
+  const ep = s.episode;
+  $("#b-episode").classList.toggle("show", !!ep.active);
+  if (ep.active) $("#b-episode-txt").textContent =
+    `Sustained noise since ${clock(ep.since)} (${dur(s.t - ep.since)}) · 1-min L50 ${f1(ep.l50_1m)} dB > ${f1(ep.threshold)} dB ${ep.night ? "quiet-hours" : "day"} threshold`;
+  $("#b-event").classList.toggle("show", !!s.event.active);
+  if (s.event.active) $("#b-event-txt").textContent = `Loud event in progress · peak ${f1(s.event.peak)} dB`;
+  const h = s.health;
+  const problem = !h.online ? "Meter offline — no readings" : h.stuck ? "Meter frozen — reading hasn't changed for 10 min" : "";
+  $("#b-health").classList.toggle("show", !!problem);
+  $("#b-health-txt").textContent = problem;
+  $("#health-line").innerHTML = `Meter <b style="color:${h.online ? css("--green") : css("--red")}">${h.online ? (h.stuck ? "frozen" : "online") : "offline"}</b>
+    · ${h.rate_hz} readings/s · calibration ${s.calibration_offset_db >= 0 ? "+" : ""}${f1(s.calibration_offset_db)} dB
+    · up ${dur(h.uptime_s)} · ${h.samples.toLocaleString()} readings`;
+  $("#lab-live").textContent = fresh ? f1(db) : "–";
+  $("#lab-bg").textContent = f1(st.l90_15m);
+  $("#conn").className = "dot " + (fresh ? "on" : "off");
+}
+function drawLive() {
+  if (S.tab !== "live" && !KIOSK) return;
+  const now = S.live.length ? S.live[S.live.length - 1][0] : Date.now() / 1000;
+  const st = S.settings || {};
+  const thr = S.snap && S.snap.episode ? S.snap.episode.threshold : st.episode_db;
+  const showMax = S.liveRange <= 600;
+  drawChart($("#live-chart"), {
+    xMin: now - S.liveRange, xMax: now, yMin: undefined,
+    series: [
+      ...(showMax ? [{ pts: S.live.map((p) => [p[0], p[2]]), color: "rgba(124,196,196,.28)", width: 1, gap: 3 }] : []),
+      { pts: S.live.map((p) => [p[0], p[1]]), color: css("--teal2"), width: 1.8, fill: "rgba(91,154,154,.30)", gap: 3 },
+    ],
+    hlines: [{ y: st.event_trigger_db, color: css("--red") }, { y: thr, color: css("--amber") }].filter((l) => l.y != null),
+  });
+}
+async function loadLive() {
+  const d = await api("live?seconds=3600");
+  S.live = d.seconds; drawLive();
+}
+function connectStream() {
+  const es = new EventSource(withToken("api/stream"));
+  es.onmessage = (e) => {
+    const m = JSON.parse(e.data);
+    S.snap = m;
+    if (m.seconds && m.seconds.length) {
+      S.live.push(...m.seconds);
+      const cut = m.seconds[m.seconds.length - 1][0] - 3600;
+      while (S.live.length && S.live[0][0] < cut) S.live.shift();
+    }
+    if (S.settings && m.settings_rev !== S.settingsRev) { S.settingsRev = m.settings_rev; loadSettings(false); }
+    for (const fn of [renderLive, drawLive]) { try { fn(); } catch (err) { console.error(err); } }
+  };
+  es.onerror = () => { $("#conn").className = "dot off"; es.close(); setTimeout(connectStream, 3000); };
+}
+
+// ------------------------------------------------------------------ history
+function quietBands(xMin, xMax) {
+  const st = S.settings; if (!st || !st.quiet_hours) return [];
+  const [a, b] = st.quiet_hours.split("-").map((x) => x.split(":").map(Number));
+  const bands = [];
+  const d = new Date(xMin * 1000); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - 1);
+  for (let t = d.getTime() / 1000; t < xMax; t += 86400) {
+    const day = new Date(t * 1000);
+    const s = new Date(day); s.setHours(a[0], a[1], 0, 0);
+    const e = new Date(day); e.setHours(b[0], b[1], 0, 0);
+    if (e <= s) e.setDate(e.getDate() + 1);
+    bands.push([s.getTime() / 1000, e.getTime() / 1000]);
+  }
+  return bands;
+}
+async function loadHistory() {
+  const now = Date.now() / 1000;
+  const d = await api(`history?hours=${S.histHours}`);
+  const ser = d.series;
+  const xMin = now - S.histHours * 3600;
+  drawChart($("#hist-chart"), {
+    xMin, xMax: now,
+    bands: S.histHours <= 168 ? quietBands(xMin, now) : [],
+    series: [
+      { pts: ser.map((p) => [p.t, p.lmax]), color: "rgba(217,80,48,.55)", dots: true, r: S.histHours <= 24 ? 1.3 : 1.8 },
+      { pts: ser.map((p) => [p.t, p.l90]), color: css("--blue"), width: 1.4, gap: d.bucket * 3 },
+      { pts: ser.map((p) => [p.t, p.laeq]), color: css("--teal2"), width: 2, fill: "rgba(91,154,154,.25)", gap: d.bucket * 3 },
+    ],
+  });
+  if (!ser.length) toast("No history in this range yet.");
+}
+async function loadDays() {
+  const d = await api("days?n=30");
+  const tb = $("#days tbody");
+  const who = d.trend.who_lden_db, whoN = d.trend.who_lnight_db;
+  tb.innerHTML = d.days.filter((x) => x.laeq_24h != null).map((x) => {
+    const date = new Date(x.date + "T12:00:00");
+    const cls = (v, lim) => v == null ? "" : v > lim ? "over" : "under";
+    return `<tr><td>${date.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })}</td>
+      <td class="${cls(x.lden, who)}"><b>${f1(x.lden)}</b></td><td>${f1(x.lday)}</td><td>${f1(x.levening)}</td>
+      <td class="${cls(x.lnight, whoN)}">${f1(x.lnight)}</td><td>${f1(x.lmax)}</td><td>${x.events}</td>
+      <td>${x.episodes ? x.episodes + " · " + Math.round(x.episode_minutes) + "′" : "0"}</td></tr>`;
+  }).join("") || `<tr><td colspan="8" class="empty">No complete day yet — come back tomorrow.</td></tr>`;
+  const t = d.trend;
+  let html;
+  if (t.delta_db == null) {
+    html = t.last7_lden != null
+      ? `Last 7 days: <b>${f1(t.last7_lden)} dB</b> Lden. The week-over-week comparison appears after two weeks of data.`
+      : `Trends appear once a few full days have been recorded.`;
+  } else {
+    const better = t.delta_db < 0;
+    html = `Last 7 days <b>${f1(t.last7_lden)} dB</b> Lden vs <b>${f1(t.prev7_lden)} dB</b> the week before:
+      <b style="color:${better ? css("--green") : css("--red")}">${t.delta_db > 0 ? "+" : ""}${f1(t.delta_db)} dB</b>
+      ${better ? "— quieter 🎉" : "— louder"}.<br><span class="muted small">A 3 dB drop is half the sound energy; 10 dB sounds about half as loud.
+      WHO guideline: ${who} dB Lden.</span>`;
+  }
+  $("#trend").innerHTML = html;
+}
+
+// ------------------------------------------------------------------ events
+async function loadEvents() {
+  const d = await api(`events?hours=720&limit=200${S.evKind ? "&kind=" + S.evKind : ""}`);
+  const list = $("#ev-list");
+  if (!d.events.length) { list.innerHTML = `<div class="empty">Nothing above your thresholds in the last 30 days. 🤫</div>`; return; }
+  let lastDay = "";
+  list.innerHTML = d.events.map((e) => {
+    const day = dayLabel(e.start);
+    const head = day !== lastDay ? `<div class="small muted" style="margin:12px 0 2px">${day}</div>` : "";
+    lastDay = day;
+    const ep = e.kind === "episode";
+    const meta = e.meta || {};
+    return `${head}<div class="ev" data-id="${e.id}" data-kind="${e.kind}">
+      <div class="ic">${ep ? "🔊" : "💥"}</div>
+      <div class="main"><div class="t">${ep ? "Noise episode" : "Loud event"} · ${clock(e.start)}${ep ? "–" + clock(e.end) : ""}</div>
+      <div class="d">${dur(e.duration_s)} · LAeq ${f1(e.laeq)} dB${ep && meta.events ? " · " + meta.events + " loud events" : ""}</div></div>
+      <div class="pk" style="color:${levelColor(e.peak)}">${f1(e.peak)}<span class="muted small"> dB</span></div></div>
+      <div class="ev-detail" id="evd-${e.id}" hidden></div>`;
+  }).join("");
+}
+async function toggleEvent(el) {
+  const id = el.dataset.id, box = $("#evd-" + id);
+  if (!box.hidden) { box.hidden = true; return; }
+  box.hidden = false;
+  if (el.dataset.kind === "episode") {
+    const e = await api("events/" + id);
+    const d = await api(`history?hours=${Math.max(2, (Date.now() / 1000 - e.start + 3600) / 3600)}`);
+    const ser = d.series.filter((p) => p.t >= e.start - 1800 && p.t <= e.end + 1800);
+    box.innerHTML = `<canvas class="chart mini"></canvas>`;
+    drawChart($("canvas", box), { xMin: e.start - 1800, xMax: e.end + 1800, bands: [[e.start, e.end]],
+      series: [{ pts: ser.map((p) => [p.t, p.laeq]), color: css("--teal2"), width: 1.8 }] });
+    return;
+  }
+  const e = await api("events/" + id);
+  const c = e.curve || [];
+  box.innerHTML = `<canvas class="chart mini"></canvas>`;
+  if (c.length) drawChart($("canvas", box), { xMin: c[0][0], xMax: c[c.length - 1][0] + 1,
+    series: [{ pts: c, color: css("--red"), width: 2, fill: "rgba(217,80,48,.25)" }],
+    hlines: e.meta && e.meta.trigger ? [{ y: e.meta.trigger, color: css("--amber") }] : [] });
+}
+
+// ------------------------------------------------------------------ lab: audio
+const AudioEngine = {
+  ctx: null, nodes: [], toneNodes: null,
+  ensure() {
+    if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (this.ctx.state === "suspended") this.ctx.resume();
+    return this.ctx;
+  },
+  pink(seconds) {
+    const ctx = this.ctx, n = Math.floor(ctx.sampleRate * seconds);
+    const buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (let i = 0; i < n; i++) {
+      const w = Math.random() * 2 - 1;
+      b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759; b2 = 0.969 * b2 + w * 0.153852;
+      b3 = 0.8665 * b3 + w * 0.3104856; b4 = 0.55 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.016898;
+      d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11; b6 = w * 0.115926;
+    }
+    return buf;
+  },
+  play(program, master = 0.7) {
+    const ctx = this.ensure();
+    this.stop();
+    const t0 = ctx.currentTime + 0.12;
+    const out = ctx.createGain(); out.gain.value = master; out.connect(ctx.destination);
+    this.nodes.push(out);
+    program.segments.filter((s) => s.kind !== "silence").forEach((s) => {
+      const amp = Math.pow(10, s.gain_db / 20), a = t0 + s.start, b = a + s.duration, f = 0.01;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, a); g.gain.linearRampToValueAtTime(amp, a + f);
+      g.gain.setValueAtTime(amp, b - f); g.gain.linearRampToValueAtTime(0, b);
+      let src;
+      if (s.kind === "tone") { src = ctx.createOscillator(); src.frequency.value = s.freq; }
+      else { src = ctx.createBufferSource(); src.buffer = this.pink(Math.min(s.duration + 0.2, 20)); src.loop = true; }
+      src.connect(g).connect(out); src.start(a); src.stop(b + 0.05);
+      this.nodes.push(src, g);
+    });
+    return t0;
+  },
+  stop() {
+    this.nodes.forEach((n) => { try { n.stop && n.stop(); } catch (e) {} try { n.disconnect(); } catch (e) {} });
+    this.nodes = [];
+  },
+  toggleTone() {
+    const ctx = this.ensure();
+    if (this.toneNodes) { this.toneNodes.forEach((n) => { try { n.stop && n.stop(); n.disconnect(); } catch (e) {} }); this.toneNodes = null; return false; }
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = 1000; g.gain.value = 0.7; o.connect(g).connect(ctx.destination); o.start();
+    this.toneNodes = [o, g]; return true;
+  },
+};
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && "wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen");
+    else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch (e) { /* not supported */ }
+}
+
+// ------------------------------------------------------------------ lab: UI
+async function loadPrograms() {
+  const d = await api("lab/programs");
+  S.prog = Object.fromEntries(d.programs.map((p) => [p.id, p]));
+  $("#programs").innerHTML = d.programs.map((p) => `
+    <div class="card prog">
+      <div class="ic">${p.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div class="row"><h3 style="margin:0">${esc(p.name)}</h3><span class="small muted">${Math.round(p.duration)} s${p.mode === "play" ? " · plays sound" : " · listen only"}</span></div>
+        <p>${esc(p.description)}</p>
+        <p class="small">💡 ${esc(p.how_to)}</p>
+        <div class="row opts">
+          ${p.id === "ambient" ? `<select data-opt="listen_s"><option value="60">1 min</option><option value="120" selected>2 min</option><option value="300">5 min</option><option value="900">15 min</option></select>` : ""}
+          ${p.id === "calibrator" ? `<select data-opt="reference_db"><option value="94">94.0 dB</option><option value="114">114.0 dB</option></select>` : ""}
+          ${p.mode === "play" ? `<label class="chk"><input type="checkbox" data-opt="manual"> I'll play the <a href="${withToken("api/lab/wav/" + p.id + ".wav")}" download>WAV</a> myself</label>` : ""}
+          <div class="spacer"></div>
+          <button class="btn sm" data-run="${p.id}">Run</button>
+        </div>
+      </div>
+    </div>`).join("");
+}
+async function loadRuns() {
+  const d = await api("lab/runs?limit=30");
+  const box = $("#runs");
+  if (!d.runs.length) { box.innerHTML = `<div class="empty">No test yet — start with the self-test.</div>`; return; }
+  box.innerHTML = d.runs.map((r) => {
+    const m = (r.result && r.result.metrics) || {};
+    const extra = m.proposed_offset_db != null ? ` · offset ${m.proposed_offset_db > 0 ? "+" : ""}${f1(m.proposed_offset_db)} dB` : "";
+    return `<div class="ev" style="cursor:default"><div class="ic">${(S.prog[r.test] || {}).icon || "🧪"}</div>
+      <div class="main"><div class="t">${esc((S.prog[r.test] || {}).name || r.test)} <span class="pill ${r.verdict}">${r.verdict}</span></div>
+      <div class="d">${dayLabel(r.ts)} ${clock(r.ts)}${extra} — ${esc(r.summary)}</div></div></div>`;
+  }).join("");
+}
+function sheet(html) { $("#sheet-box").innerHTML = html; $("#sheet").classList.add("show"); }
+function closeSheet() { $("#sheet").classList.remove("show"); }
+
+async function runTest(id, card) {
+  const p = S.prog[id];
+  const params = {};
+  $$("[data-opt]", card).forEach((el) => {
+    if (el.type === "checkbox") { if (el.checked) params[el.dataset.opt] = true; }
+    else params[el.dataset.opt] = Number(el.value);
+  });
+  // Create/resume the AudioContext synchronously inside the tap (iOS requirement).
+  if (p.mode === "play" && !params.manual) AudioEngine.ensure();
+  if (AudioEngine.toneNodes) { AudioEngine.toggleTone(); $("#tone-btn").textContent = "🔈 Level-check tone"; }
+  let run;
+  try { run = await api("lab/runs", { method: "POST", body: { test: id, params } }); }
+  catch (e) { toast("❌ " + e.message); return; }
+  let playStart = null;
+  if (p.mode === "play" && !params.manual) { AudioEngine.play(p); playStart = performance.now() / 1000 + 0.12; }
+  keepAwake(true);
+  S.run = { id: run.id, program: p, params, startedAt: performance.now() / 1000, playStart, duration: run.duration, pts: [] };
+  sheet(`<div class="row"><h3 style="margin:0">${p.icon} ${esc(p.name)}</h3><div class="spacer"></div>
+      <button class="btn ghost sm" id="run-cancel">Cancel</button></div>
+    <div class="step-now" id="run-step">${params.manual ? "▶️ Press play on the WAV now" : "Starting…"}</div>
+    <div class="small muted" id="run-hint">${p.mode === "play" && !params.manual ? "Keep this phone still next to the meter." : p.mode === "listen" ? "Listening — keep things as they are." : "You have about 20 s to start playback."}</div>
+    <div class="row" style="margin:14px 0 8px"><div style="flex:1" class="bar"><i id="run-bar"></i></div><span class="small muted" id="run-time"></span></div>
+    <div class="row"><span class="muted small">Meter now</span><b id="run-db" style="font-size:22px">–</b><span class="muted small">dB</span></div>
+    <canvas class="chart mini" id="run-chart" style="margin-top:8px"></canvas>`);
+  $("#run-cancel").onclick = async () => {
+    AudioEngine.stop(); keepAwake(false);
+    try { await api(`lab/runs/${run.id}/cancel`, { method: "POST" }); } catch (e) {}
+    S.run = null; closeSheet();
+  };
+  pollRun();
+}
+function labTick() {
+  const r = S.run; if (!r || !S.snap) return;
+  const now = performance.now() / 1000;
+  if (S.snap.db != null && S.snap.db_t !== r.lastDbT) { r.lastDbT = S.snap.db_t; r.pts.push([now - r.startedAt, S.snap.db]); }
+  const el = $("#run-db"); if (el) el.textContent = f1(S.snap.db);
+  const elapsed = now - r.startedAt;
+  const bar = $("#run-bar"); if (bar) bar.style.width = Math.min(100, elapsed / r.duration * 100) + "%";
+  const tm = $("#run-time"); if (tm) tm.textContent = Math.max(0, Math.ceil(r.duration - elapsed)) + " s";
+  if (r.playStart != null) {
+    const rel = now - r.playStart;
+    const seg = r.program.segments.find((s) => rel >= s.start && rel < s.start + s.duration);
+    const st = $("#run-step");
+    if (st) st.textContent = seg ? (seg.role === "gap" ? "…" : seg.label) : rel < 0 ? "Starting…" : "Recording the tail…";
+  } else if (r.program.mode === "listen") {
+    const st = $("#run-step"); if (st) st.textContent = elapsed < r.duration ? "Listening…" : "Analysing…";
+  }
+  const cv = $("#run-chart");
+  if (cv && r.pts.length > 1) drawChart(cv, { rel: true, xMin: 0, xMax: r.duration, series: [{ pts: r.pts, color: css("--teal2"), width: 1.6 }] });
+}
+async function pollRun() {
+  const r = S.run; if (!r) return;
+  let d;
+  try { d = await api("lab/runs/" + r.id); } catch (e) { setTimeout(pollRun, 1000); return; }
+  if (d.status === "capturing" || d.status === "analyzing") {
+    if (d.status === "analyzing") { const st = $("#run-step"); if (st) st.textContent = "Analysing…"; }
+    setTimeout(pollRun, 600); return;
+  }
+  AudioEngine.stop(); keepAwake(false); S.run = null;
+  if (d.status !== "done") { sheet(`<h3>Test ${esc(d.status)}</h3><p class="muted">${esc(d.error || "")}</p><button class="btn" onclick="closeSheet()">Close</button>`); return; }
+  showResult(d.id, d.result);
+  loadRuns();
+}
+function showResult(runId, res) {
+  const m = res.metrics || {};
+  const metricLabels = {
+    rate_hz: ["Update rate", "/s"], jitter_ms: ["Timing jitter", "ms"], max_gap_s: ["Longest gap", "s"], noise_floor_db: ["Noise floor (L90)", "dB"],
+    resolution_db: ["Resolution", "dB"], spread_db: ["Spread (σ)", "dB"], background_db: ["Background", "dB"], max_error_db: ["Max linearity error", "dB"],
+    usable_span_db: ["Usable span", "dB"], steady_db: ["Steady level", "dB"], burst_delta_db: ["Burst vs steady", "dB"], time_weighting: ["Time weighting", ""],
+    rise_time_s: ["Rise time", "s"], measured_db: ["Box reading", "dB"], reference_db: ["Reference", "dB"], correction_db: ["Correction", "dB"],
+    proposed_offset_db: ["New offset", "dB"], current_offset_db: ["Current offset", "dB"], l90_db: ["L90 now", "dB"], l50_db: ["L50 now", "dB"],
+    l10_db: ["L10 now", "dB"], laeq_db: ["LAeq", "dB"], alignment_score: ["Signal match", ""],
+  };
+  const kv = Object.entries(metricLabels).filter(([k]) => m[k] != null && typeof m[k] !== "object")
+    .map(([k, [label, u]]) => `<div>${label}</div><div><b>${typeof m[k] === "number" ? (Number.isInteger(m[k]) ? m[k] : m[k].toFixed(k === "alignment_score" ? 2 : 1)) : esc(m[k])}</b> ${u}</div>`).join("");
+  let steps = "";
+  if (res.test === "linearity" && res.steps) {
+    const top = Math.max(...res.steps.map((s) => s.measured_db)), bottom = (m.background_db || 30) - 5;
+    const pct = (v) => Math.max(2, Math.min(100, (v - bottom) / (top - bottom + 3) * 100));
+    steps = `<h2>Staircase — measured vs expected</h2>` + res.steps.map((s) => `
+      <div class="lin ${s.usable ? "" : "dim"}"><span>${esc(s.label.split("·").pop().trim())}${s.disturbed ? " ⚠️" : ""}</span>
+      <div class="track"><i style="width:${pct(s.measured_db)}%"></i><b style="left:${pct(s.expected_db)}%"></b></div>
+      <span style="text-align:right">${f1(s.measured_db)} <span class="${s.usable && Math.abs(s.error_db) > 1 ? "over" : "muted"}">${s.error_db > 0 ? "+" : ""}${f1(s.error_db)}</span></span></div>`).join("")
+      + `<p class="small muted">Bar = measured, white tick = expected (best fit). Greyed steps are lost in the background; ⚠️ = disturbed by outside noise.</p>`;
+  } else if (res.test === "response" && res.steps) {
+    steps = `<h2>Bursts</h2>` + res.steps.map((b) => `<div class="small">${esc(b.label)}: peak ${f1(b.peak_db)} dB (${b.delta_db > 0 ? "+" : ""}${f1(b.delta_db)} dB vs steady)</div>`).join("");
+  }
+  const ref = res.needs_reference ? `
+    <div class="card" style="margin-top:14px;background:var(--panel2)">
+      <div class="lbl" style="margin-bottom:8px">What did your reference meter show?</div>
+      <div class="row"><input type="number" step="0.1" id="ref-db" placeholder="e.g. 72.4"> <span class="muted">dB(A)</span>
+      <div class="spacer"></div><button class="btn sm" id="ref-go">Compute offset</button></div></div>` : "";
+  const apply = res.apply ? `
+    <div class="card" style="margin-top:14px;background:var(--panel2)">
+      <div class="small muted" style="margin-bottom:6px">Recommended settings</div>
+      ${Object.entries(res.apply).map(([k, v]) => `<div class="small">${esc(k.replace(/_/g, " "))}: <b>${v}</b></div>`).join("")}
+      <div class="row" style="margin-top:10px"><div class="spacer"></div><button class="btn sm" id="apply-go">Apply & save</button></div></div>` : "";
+  sheet(`<div class="row"><h3 style="margin:0">${esc(res.name)}</h3><span class="pill ${res.verdict}">${res.verdict}</span><div class="spacer"></div>
+      <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+    <p style="font-size:16px;line-height:1.45">${esc(res.summary)}</p>
+    <canvas class="chart mini" id="res-chart"></canvas>
+    <div class="kv" style="margin-top:12px">${kv}</div>
+    ${steps}
+    ${res.recommendations && res.recommendations.length ? `<ul class="recs">${res.recommendations.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}
+    ${ref}${apply}`);
+  if (res.samples && res.samples.length) {
+    const s = res.samples;
+    drawChart($("#res-chart"), { rel: true, xMin: s[0][0], xMax: s[s.length - 1][0], series: [{ pts: s, color: css("--teal2"), width: 1.5 }] });
+  }
+  const go = $("#ref-go");
+  if (go) go.onclick = async () => {
+    const v = parseFloat($("#ref-db").value);
+    if (!isFinite(v)) { toast("Enter the reference value"); return; }
+    try { const d = await api(`lab/runs/${runId}/reference`, { method: "POST", body: { reference_db: v } }); showResult(runId, d.result); loadRuns(); }
+    catch (e) { toast("❌ " + e.message); }
+  };
+  const ap = $("#apply-go");
+  if (ap) ap.onclick = async () => {
+    try { await api("settings", { method: "POST", body: res.apply }); toast("✅ Saved"); closeSheet(); loadSettings(true); }
+    catch (e) { toast("❌ " + e.message); }
+  };
+}
+
+// ------------------------------------------------------------------ settings
+async function loadSettings(fillForm = true) {
+  const d = await api("settings");
+  S.settings = d.settings; S.info = d.info;
+  $("#title").textContent = d.info.device_name;
+  document.title = d.info.device_name + " · Mute Lab";
+  $("#mode").textContent = { demo: "demo", standalone: "local", cloud: "cloud + lab" }[d.info.mode] || d.info.mode;
+  if (fillForm) {
+    $$("[data-k]").forEach((el) => { el.value = d.settings[el.dataset.k]; });
+    const [a, b] = d.settings.quiet_hours.split("-");
+    $("#qh-a").value = a; $("#qh-b").value = b;
+    const labels = { episodes: "Episodes start/stop", events: "Every loud event", health: "Meter problems", daily: "Daily report", lab: "Lab results" };
+    $("#notify-kinds").innerHTML = d.notify_kinds.map((k) =>
+      `<label class="chk"><input type="checkbox" value="${k}" ${d.settings.notify.includes(k) ? "checked" : ""}> ${labels[k] || k}</label>`).join("");
+  }
+  const n = d.info.ntfy;
+  $("#ntfy-status").innerHTML = n.configured
+    ? `✅ Pushing to <b>${esc(n.server)}/${esc(n.topic)}</b> — subscribe to this topic in the ntfy app.${n.error ? `<br><span class="over">Last error: ${esc(n.error)}</span>` : ""}`
+      + (n.recent.length ? `<div class="muted" style="margin-top:6px">Last: ${esc(n.recent[n.recent.length - 1].title)} (${clock(n.recent[n.recent.length - 1].t)})</div>` : "")
+    : `ntfy is not configured. Add <code>-e MUTE_NTFY_URL=https://ntfy.sh/&lt;your-secret-topic&gt;</code> to the container and install the ntfy app.`
+      + (n.error ? `<br><span class="over">${esc(n.error)}</span>` : "");
+  const mq = d.info.mqtt;
+  $("#ha-status").innerHTML = mq.enabled ? `MQTT ${mq.connected ? "✅ connected" : "⏳ not connected"} — entities appear under the device automatically.`
+    : `MQTT is off. Set <code>LOCAL_MQTT_ENABLED=true</code> and the broker variables to get sensors in Home Assistant. The card below works either way.`;
+  $("#about").innerHTML = `<div>Version</div><div>${esc(d.info.version)}</div><div>Mode</div><div>${esc(d.info.mode)}</div>
+    <div>History since</div><div>${d.info.history_since ? dayLabel(d.info.history_since) : "–"}</div>`;
+  drawGauge(S.snap ? S.snap.db : null);
+}
+async function saveSettings() {
+  const body = {};
+  $$("#tab-settings [data-k]").forEach((el) => {
+    const v = el.type === "number" ? Number(el.value) : el.value;
+    if (el.value !== "" && v !== S.settings[el.dataset.k]) body[el.dataset.k] = v;
+  });
+  const qh = `${$("#qh-a").value}-${$("#qh-b").value}`;
+  if (qh !== S.settings.quiet_hours) body.quiet_hours = qh;
+  const kinds = $$("#notify-kinds input:checked").map((i) => i.value);
+  if (kinds.join() !== S.settings.notify.join()) body.notify = kinds;
+  if (!Object.keys(body).length) { toast("Nothing changed"); return; }
+  try { await api("settings", { method: "POST", body }); toast("✅ Saved"); loadSettings(true); }
+  catch (e) { toast("❌ " + e.message, 4000); }
+}
+
+// ------------------------------------------------------------------ wiring
+function showTab(name) {
+  S.tab = name;
+  $$("section.tab").forEach((s) => s.classList.toggle("active", s.id === "tab-" + name));
+  $$("nav button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
+  window.scrollTo(0, 0);
+  if (name === "live") drawLive();
+  if (name === "history") { loadHistory().catch(() => {}); loadDays().catch(() => {}); }
+  if (name === "events") loadEvents().catch((e) => toast(e.message));
+  if (name === "lab") loadRuns().catch(() => {});
+  if (name === "settings") { loadSettings(true); fetch(withToken("api/ha.yaml")).then((r) => r.text()).then((t) => { $("#ha-yaml").textContent = t; }); }
+  if (!KIOSK) history.replaceState(null, "", location.pathname + location.search + "#" + name);
+}
+$("#nav").onclick = (e) => { const b = e.target.closest("button"); if (b) showTab(b.dataset.tab); };
+$("#live-range").onclick = (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  $$("#live-range button").forEach((x) => x.classList.toggle("on", x === b));
+  S.liveRange = Number(b.dataset.s); drawLive();
+};
+$("#hist-range").onclick = (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  $$("#hist-range button").forEach((x) => x.classList.toggle("on", x === b));
+  S.histHours = Number(b.dataset.h); loadHistory();
+};
+$("#ev-kind").onclick = (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  $$("#ev-kind button").forEach((x) => x.classList.toggle("on", x === b));
+  S.evKind = b.dataset.k; loadEvents();
+};
+$("#ev-list").onclick = (e) => { const el = e.target.closest(".ev"); if (el) toggleEvent(el); };
+$("#programs").onclick = (e) => {
+  const b = e.target.closest("[data-run]"); if (b) runTest(b.dataset.run, b.closest(".prog"));
+};
+$("#tone-btn").onclick = () => {
+  const on = AudioEngine.toggleTone();
+  $("#tone-btn").textContent = on ? "⏹ Stop tone" : "🔈 Level-check tone";
+  if (on) toast("Aim for at least 40 dB above the background");
+};
+$("#save").onclick = saveSettings;
+$("#ntfy-test").onclick = async () => {
+  try { await api("notify/test", { method: "POST" }); toast("🔔 Sent — check your phone"); loadSettings(false); }
+  catch (e) { toast("❌ " + e.message, 4000); }
+};
+$("#ntfy-summary").onclick = async () => {
+  try { await api("summary/send", { method: "POST" }); toast("📊 Report sent"); }
+  catch (e) { toast("❌ " + e.message, 4000); }
+};
+$("#ha-copy").onclick = () => { navigator.clipboard && navigator.clipboard.writeText($("#ha-yaml").textContent).then(() => toast("Copied")); };
+$$("[data-dl]").forEach((a) => { a.href = withToken("api/" + a.dataset.dl); });
+$("#sheet").onclick = (e) => { if (e.target.id === "sheet" && !S.run) closeSheet(); };
+window.addEventListener("resize", () => { drawLive(); renderLive(); if (S.tab === "history") loadHistory(); });
+window.closeSheet = closeSheet;
+setInterval(() => { try { labTick(); } catch (err) { console.error(err); } }, 250);
+
+(async function init() {
+  try {
+    await loadSettings(true);
+    await Promise.all([loadLive(), loadPrograms()]);
+  } catch (e) { toast(e.message); }
+  connectStream();
+  const start = (location.hash || "#live").slice(1);
+  if (!KIOSK && ["live", "history", "events", "lab", "settings"].includes(start)) showTab(start);
+})();
+</script>
+</body>
+</html>

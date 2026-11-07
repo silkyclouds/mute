@@ -1,2 +1,2 @@
-CLIENT_VERSION = "0.12.3"
-BUILD_LABEL = "V2 enrollment + CH340/R8080 meter support"
+CLIENT_VERSION = "0.13.0"
+BUILD_LABEL = "Mute Lab: local dashboard, history, ntfy, meter lab"

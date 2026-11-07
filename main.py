@@ -26,6 +26,11 @@ from mqtt_client import MuteqMqttClient
 from security import load_shared_secret
 from usb_reader import find_usb_device, read_spl_value
 
+try:  # Mute Lab (local dashboard, history, ntfy, meter lab) is optional and opt-in.
+    from mutelab.integration import maybe_start_lab
+except Exception:  # pragma: no cover - never block the cloud client
+    maybe_start_lab = None
+
 BUFFER_RETENTION_S = 15
 AGG_WINDOW_S = 2.0
 HIGH_RES_MARGIN_DB = 5.0
@@ -123,6 +128,7 @@ class MuteqClientApp:
         self.stop_event = False
         self.backend_client: Optional[BackendClient] = None
         self.mqtt_client: Optional[MuteqMqttClient] = None
+        self.lab = None
         self.usb_device = None
         self.window_duration_s = 1.0
         self.window_lock = threading.Lock()
@@ -668,10 +674,16 @@ class MuteqClientApp:
                 value = 45.0 + 10.0 * math.sin(now_ts) + (5.0 if random.random() < 0.05 else 0.0)
             else:
                 value = read_spl_value(self.usb_device, self.logger)
+            if value is not None and self.lab:
+                # Calibration offset from the lab (0 dB unless the user calibrated) applies to every output.
+                value = self.lab.apply_calibration(value)
+                self.lab.on_sample(now_ts, value)
             if value is None:
                 self.none_spl_count += 1
                 if (now_ts - self.last_spl_ok_ts) > 5.0:
                     self.log_error(f"[SPL] No samples for 5s (none_count={self.none_spl_count}, usb_present={self._usb_debug_state()})")
+                    if self.lab:
+                        self.lab.report_fatal("no readings from the sound meter for 5 s — check the USB connection")
                     sys.exit(2)
             else:
                 self.last_spl_ok_ts = now_ts
@@ -721,6 +733,8 @@ class MuteqClientApp:
                 pass
         if self.backend_client:
             self.backend_client.stop()
+        if self.lab:
+            self.lab.stop()
         if self.mqtt_client:
             self.mqtt_client.disconnect()
         self.log_info("Shutdown complete.")
@@ -873,6 +887,8 @@ class MuteqClientApp:
         self.ensure_registration()
         self.init_usb()
         self.init_mqtt()
+        if maybe_start_lab is not None:
+            self.lab = maybe_start_lab(self.cfg, self.mqtt_client, self.logger, CLIENT_VERSION)
         self.sync_backend_config()
         
         # Display initial status summary

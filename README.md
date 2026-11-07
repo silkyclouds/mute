@@ -29,6 +29,7 @@
 | 🌐 **Website** | [muteq.eu](https://muteq.eu) — Learn more about MUTEq |
 | 💬 **Discord** | [Join our community](https://discord.com/invite/m7RGZy6YmZ) — Get help & share your builds |
 | 🔧 **Build Your Own** | [DIY Guide](#-build-your-own-mute-box) — Start building your Mute Box |
+| 🧪 **Mute Lab** | [Local dashboard, alerts & meter lab](#-mute-lab--local-dashboard-history-push-alerts--meter-lab) — runs on your box |
 
 ---
 
@@ -245,6 +246,105 @@ automation:
 
 ---
 
+## 🧪 Mute Lab — local dashboard, history, push alerts & meter lab
+
+Mute Lab runs **on the Mute Box itself** and keeps everything on your network. It is optional and off by default.
+
+| | |
+|---|---|
+| 📱 **Live dashboard** | Phone-friendly web app on `http://<box>:8080` (add it to your home screen). Live gauge, LAeq 1 min / 15 min / 1 h, background L90, busy level L10, Lmax, live chart with your thresholds. |
+| 🔔 **Push notifications** | Via [ntfy](https://ntfy.sh): *noise started* / *quiet again* (with duration, LAeq, peak), optional alert for each loud event, meter unplugged / frozen, and a daily report every morning. |
+| 🗓️ **Local history** | SQLite in your config volume: per-minute LAeq/L10/L50/L90/Lmax, every event and episode. Daily **Lday / Levening / Lnight / Lden** (EU Directive 2002/49/EC), compared with the WHO guideline, plus a week-over-week trend: *are things getting better?* CSV export. |
+| 🧪 **Meter lab** | Tests your sound meter using your phone as the test-signal speaker, then saves the best settings for you (see below). |
+| 🏠 **Home Assistant** | Extra MQTT sensors (LAeq, L90, L10, Lmax, events today, Lden yesterday, *noise episode* binary sensor, meter problem) and a kiosk view for wall tablets. |
+
+### Enable it
+
+Add three things to your usual `docker run`: `-p 8080:8080`, `-e MUTE_LAB_ENABLED=true` and your time zone.
+
+```bash
+docker run -d \
+  --name mute-client \
+  --restart unless-stopped \
+  --privileged \
+  -v /dev:/dev \
+  -v /path/to/config:/config \
+  -p 8080:8080 \
+  -e TZ=Europe/Brussels \
+  -e MUTE_LAB_ENABLED=true \
+  -e MUTE_NTFY_URL=https://ntfy.sh/mute-<pick-a-long-random-topic> \
+  meaning/mute-client:latest
+```
+
+Then open `http://<your-pi-ip>:8080` on your phone, and subscribe to the same topic in the ntfy app ([Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy) / [iOS](https://apps.apple.com/app/ntfy/id1625396347)).
+
+> 🔐 The dashboard is meant for your LAN. If other people share your network, set `MUTE_LAB_TOKEN` and open `http://<box>:8080/?token=<token>` once on each device. Do not expose port 8080 to the internet.
+
+### The meter lab
+
+Put your phone 5–10 cm from the meter microphone (volume up, silent mode off) and tap **Run**. The phone plays the test signal, the box records the meter, aligns the recording with the signal automatically, and explains the result. Each test can also be downloaded as a WAV to play on a better speaker.
+
+| Test | What it tells you |
+|---|---|
+| 🩺 **Self-test** (30 s, silent) | Update rate, timing jitter, resolution, noise floor, frozen or clipped readings. |
+| 📶 **Linearity staircase** | A 1 kHz tone drops by exactly 6 dB, six times. Shows the linearity error and the usable range in your room. Steps disturbed by outside noise are detected and ignored instead of blaming the meter. |
+| ⚡ **Burst response** | IEC 61672 tone-burst check: a 200 ms burst reads −1.0 dB on a *Fast* meter, −7.4 dB on a *Slow* one. Tells you which one you really have. |
+| 🎯 **Reference calibration** | Plays pink noise; you type what your reference meter shows; the offset is computed and saved. |
+| 🔧 **Acoustic calibrator** | Same with a 94 dB or 114 dB calibrator, no sound played. |
+| 🌙 **Ambient survey & auto-tune** | Listens to your normal environment, combines it with your history, and recommends event and day/night episode thresholds. One tap to apply. |
+
+The calibration offset is applied to every reading, so the cloud dashboard and Home Assistant get the corrected values too. Test signals are kept out of the history and never trigger alerts.
+
+### What gets detected
+
+- **Loud event**: a second whose max goes above the event trigger (default 80 dB), with hysteresis. Stored with its curve.
+- **Noise episode**: sustained noise, when the 1-minute median (L50) stays above the day threshold (default 65 dB) or the quiet-hours threshold (default 55 dB, 22:00–07:00). A single door slam does not start an episode. It ends after N minutes below the threshold − 3 dB, and the notification tells you how long it lasted.
+
+Everything can be tuned from the dashboard (*Settings*) and is saved in `/config/mute_lab.json`.
+
+### Home Assistant
+
+With MQTT enabled (`LOCAL_MQTT_*` variables above), Mute Lab adds these entities to your device automatically: `LAeq 1 min`, `LAeq 15 min`, `Lmax 1 min`, `Background L90`, `Busy level L10`, `Loud events today`, `Lden / Lnight / LAeq 24 h yesterday`, `Noise episode` (binary sensor), `Meter problem` and `Meter update rate` (diagnostic). For a wall tablet, add a **Webpage** card pointing to `http://<box>:8080/?kiosk=1`. The *Settings* tab of the dashboard shows a ready-to-paste YAML snippet.
+
+### Without the cloud, or without hardware
+
+```bash
+# Try everything with a simulated meter and 14 days of synthetic history (no hardware needed)
+python3 -m mutelab demo            # then open http://localhost:8080
+
+# Local-only station with the real meter: no enrollment, nothing leaves your network
+docker run -d --name mute-local --restart unless-stopped --privileged \
+  -v /dev:/dev -v /path/to/config:/config -p 8080:8080 -e TZ=Europe/Brussels \
+  -e MUTE_NTFY_URL=https://ntfy.sh/<your-topic> \
+  meaning/mute-client:latest python -m mutelab run
+
+# Daily Lden report in the terminal, and WAV export of the test signals
+python3 -m mutelab report --data-dir /path/to/config
+python3 -m mutelab wav all --out ./test-signals
+```
+
+### Mute Lab environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `MUTE_LAB_ENABLED` | `false` | Start Mute Lab next to the cloud client |
+| `MUTE_LAB_PORT` | `8080` | Dashboard port |
+| `MUTE_LAB_BIND` | `0.0.0.0` | Dashboard listen address |
+| `MUTE_LAB_TOKEN` | — | Require this token for the dashboard API |
+| `MUTE_LAB_PUBLIC_URL` | — | URL of the dashboard, used as the click target of notifications and in the HA snippet |
+| `MUTE_LAB_DATA_DIR` | `/config` | Where `mute_history.db` and `mute_lab.json` live |
+| `MUTE_LAB_RETENTION_DAYS` | `400` | History retention |
+| `MUTE_NTFY_URL` | — | Full topic URL, e.g. `https://ntfy.sh/my-topic` or your own server |
+| `MUTE_NTFY_TOKEN` | — | Access token for a protected ntfy server |
+| `MUTE_NTFY_NOTIFY` | `episodes,health,daily,lab` | Which notifications to send (`events` adds one per loud event) |
+| `MUTE_LAB_EVENT_DB`, `MUTE_LAB_EPISODE_DB`, `MUTE_LAB_EPISODE_NIGHT_DB`, `MUTE_LAB_QUIET_HOURS`, `MUTE_LAB_CALIBRATION_DB`, `MUTE_LAB_DAILY_SUMMARY` | — | Initial values for the settings (anything saved from the dashboard wins) |
+| `TZ` | `UTC` | Your time zone, for quiet hours and daily reports |
+
+> ⚖️ Consumer USB meters are not Class 1 instruments. The lab tells you how far you can trust yours; for legal evidence, compare with a certified meter.
+
+---
+
+
 ## 🎤 Supported USB Sound Meters
 
 | Vendor ID | Product ID | Description |
@@ -363,7 +463,7 @@ Building your own Mute Box is easy and affordable. All you need is:
 | 🚫🎤 **No Audio Recordings** | Only dB levels are captured. Never actual sound content. |
 | 👤 **No Personal Data** | No PII collected. Anonymous by design. |
 | 🇪🇺 **GDPR Compliant** | Built in Europe with privacy at its core. |
-| 🔐 **Local-first Option** | Use MQTT-only mode to keep data on your network. |
+| 🔐 **Local-first Option** | Run `python -m mutelab run` for a local-only station: dashboard, history and alerts, nothing sent to the cloud. |
 
 ---
 

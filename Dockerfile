@@ -2,6 +2,7 @@ FROM python:3.11-alpine
 ARG SHARED_SECRET
 
 RUN apk add --no-cache \
+    tzdata \
     libusb \
     libusb-dev \
     libffi \
@@ -26,5 +27,8 @@ RUN pip install --no-cache-dir \
 
 ENV PYTHONUNBUFFERED=1 \
     MUTE_CLIENT_CFG=/app/client_config.json
+
+# Mute Lab dashboard (only listens when MUTE_LAB_ENABLED=true)
+EXPOSE 8080
 
 CMD ["python", "/app/client.py"]
